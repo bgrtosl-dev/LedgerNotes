@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest.json">
-<!-- Main SVG Icon -->
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<!-- iOS Apple Touch Icon -->
-<link rel="apple-touch-icon" href="icon.svg">  
+<link rel="apple-touch-icon" href="icon.svg">
 <title>Ledger Notes</title>
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
 <style>
@@ -16,10 +14,9 @@ body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-s
 .app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); }
 h1 { margin: 0 0 8px 0; font-size: 26px; }
 .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 0; }
-select { font-size: 17px; padding: 6px 10px; border: 1px solid #999; border-radius: 6px; background: white; }
-.clef-switch { display: inline-flex; border: 1px solid #999; border-radius: 6px; overflow: hidden; background: #f0f0f0; }
-.clef-btn { padding: 6px 14px; font-size: 17px; border: none; background: transparent; cursor: pointer; transition: background 0.2s, color 0.2s; color: #333; }
-.clef-btn.active { background: #2563eb; color: white; font-weight: bold; }
+select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; border-radius: 6px; background: white; cursor: pointer; }
+.clef-toggle-btn { background: #2563eb; color: white; border: none; font-weight: bold; transition: background 0.2s; }
+.clef-toggle-btn:hover { background: #1d4ed8; }
 #score { width: 100%; height: 380px; background: white; overflow: visible; }
 </style>
 </head>
@@ -27,10 +24,7 @@ select { font-size: 17px; padding: 6px 10px; border: 1px solid #999; border-radi
 <div class="app">
 <h1>Ledger Notes</h1>
 <div class="controls">
-<div class="clef-switch" id="clefSwitch">
-  <button class="clef-btn active" data-value="treble">𝄞 Treble</button>
-  <button class="clef-btn" data-value="bass">𝄢 Bass</button>
-</div>
+<button id="clefToggleBtn" class="clef-toggle-btn">𝄞 Treble</button>
 <select id="noteSelect"> 
   <option value="C" selected>C</option> 
   <option value="D">D</option> 
@@ -143,14 +137,16 @@ function drawLabels(chord, notes) {
 }
 
 /* CONTROLS */
-const clefButtons = document.querySelectorAll("#clefSwitch .clef-btn");
-clefButtons.forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    clefButtons.forEach(b => b.classList.remove("active"));
-    this.classList.add("active");
-    clef = this.getAttribute("data-value");
-    draw();
-  });
+const clefBtn = document.getElementById("clefToggleBtn");
+clefBtn.addEventListener("click", function () {
+  if (clef === "treble") {
+    clef = "bass";
+    this.textContent = "𝄢 Bass";
+  } else {
+    clef = "treble";
+    this.textContent = "𝄞 Treble";
+  }
+  draw();
 });
 
 document.getElementById("noteSelect").addEventListener("change", function () {
