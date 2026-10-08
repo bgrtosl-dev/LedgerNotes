@@ -1,5 +1,9 @@
 <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<meta name="theme-color" content="#ffffff">
+
+<link rel="manifest" href="manifest.json">
+
 <title>Ledger Notes</title>
 
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
@@ -110,15 +114,13 @@ score.innerHTML = "";
 
 const renderer = new VF.Renderer( score, VF.Renderer.Backends.SVG );
 
-/* Canvas remains wide enough for all labels, but the actual STAFF is only 125px long. */
-
 renderer.resize( 600, 380 );
 
 const context = renderer.getContext();
 
 /*
 
-VERY SHORT STAFF
+SHORT STAFF
 
 */
 
@@ -176,6 +178,8 @@ const svg = document.querySelector( "#score svg" );
 
 if (!svg) { return; }
 
+/* Get the REAL notehead positions from VexFlow. */
+
 const ys = chord.getYs();
 
 let noteX = 0;
@@ -184,7 +188,7 @@ if ( typeof chord.getAbsoluteX === "function" ) {
 
 noteX = chord.getAbsoluteX(); }
 
-/* Labels immediately to the right of the noteheads. */
+/* Labels sit immediately to the right of the noteheads. */
 
 const labelX = noteX + 25;
 
