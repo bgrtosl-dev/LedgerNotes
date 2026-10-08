@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Dark Rounded Background -->
+  <rect width="512" height="512" rx="112" fill="#1e2937"/>
+
+  <!-- Faded Top Line of Staff -->
+  <line x1="120" y1="400" x2="392" y2="400" stroke="#ffffff" stroke-width="12" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- 4 Ledger Lines Above Staff -->
+  <line x1="180" y1="330" x2="330" y2="330" stroke="#38bdf8" stroke-width="14" stroke-linecap="round"/>
+  <line x1="180" y1="260" x2="330" y2="260" stroke="#38bdf8" stroke-width="14" stroke-linecap="round"/>
+  <line x1="180" y1="190" x2="330" y2="190" stroke="#38bdf8" stroke-width="14" stroke-linecap="round"/>
+  <line x1="180" y1="120" x2="330" y2="120" stroke="#38bdf8" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Note Head on Highest Ledger Line -->
+  <ellipse cx="255" cy="120" rx="36" ry="26" fill="#38bdf8" transform="rotate(-20 255 120)"/>
+
+  <!-- Stem Pointing Down -->
+  <rect x="221" y="120" width="14" height="270" fill="#38bdf8" rx="4"/>
+</svg>
