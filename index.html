@@ -1,289 +1,169 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#ffffff">
-
 <link rel="manifest" href="manifest.json">
-
 <title>Ledger Notes</title>
-
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
-
 <style>
-
 body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-serif; }
-
 .app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); }
-
 h1 { margin: 0 0 8px 0; font-size: 26px; }
-
-.controls { display: flex; gap: 10px; margin-bottom: 0; }
-
+.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 0; }
 select { font-size: 17px; padding: 6px 10px; border: 1px solid #999; border-radius: 6px; background: white; }
-
+.clef-switch { display: inline-flex; border: 1px solid #999; border-radius: 6px; overflow: hidden; background: #f0f0f0; }
+.clef-btn { padding: 6px 14px; font-size: 17px; border: none; background: transparent; cursor: pointer; transition: background 0.2s, color 0.2s; color: #333; }
+.clef-btn.active { background: #2563eb; color: white; font-weight: bold; }
 #score { width: 100%; height: 380px; background: white; overflow: visible; }
-
-</style> </head>
-
+</style>
+</head>
 <body>
-
 <div class="app">
-
 <h1>Ledger Notes</h1>
-
 <div class="controls">
-
-<select id="clefSelect"> <option value="treble">𝄞 Treble</option> <option value="bass">𝄢 Bass</option> </select>
-
-<select id="noteSelect"> <option value="C" selected>C</option> <option value="D">D</option> <option value="E">E</option> <option value="F">F</option> <option value="G">G</option> <option value="A">A</option> <option value="B">B</option> </select>
-
+<div class="clef-switch" id="clefSwitch">
+  <button class="clef-btn active" data-value="treble">𝄞 Treble</button>
+  <button class="clef-btn" data-value="bass">𝄢 Bass</button>
 </div>
-
+<select id="noteSelect"> 
+  <option value="C" selected>C</option> 
+  <option value="D">D</option> 
+  <option value="E">E</option> 
+  <option value="F">F</option> 
+  <option value="G">G</option> 
+  <option value="A">A</option> 
+  <option value="B">B</option> 
+</select>
+</div>
 <div id="score"></div>
-
 </div>
-
 <script>
-
 window.addEventListener("load", function () {
-
 const VF = Vex.Flow;
+let clef = "treble";
+let selectedLetter = "C";
 
-let clef = "treble"; let selectedLetter = "C";
-
-/* ======================================================== PIANO: A0 - C8 ======================================================== */
-
+/* PIANO: A0 - C8 */
 const piano = [];
-
 const natural = [ "C", "D", "E", "F", "G", "A", "B" ];
-
 for (let octave = 0; octave <= 8; octave++) {
-
-for (const letter of natural) {
-
-if ( octave === 0 && letter !== "A" && letter !== "B" ) { continue; }
-
-if ( octave === 8 && letter !== "C" ) { continue; }
-
-piano.push({ letter, octave }); } }
-
-/* ======================================================== DIATONIC POSITION ======================================================== */
-
-const letterIndex = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-
-function pitchPosition(letter, octave) {
-
-return octave * 7 + letterIndex[letter]; }
-
-/* ======================================================== LEDGER POSITION ========================================================
-
-Notes inside the staff: no number is displayed.
-
-Outside the staff: each half staff-position = 0.5
-
-Therefore, for treble clef:
-
-G5 = /0.5 A5 = /1 B5 = /1.5 C6 = /2 D6 = /2.5 E6 = /3 F6 = /3.5
-
-======================================================== */
-
-function ledgerLineCount(letter, octave) {
-
-const p = pitchPosition(letter, octave);
-
-let bottom; let top;
-
-if (clef === "treble") {
-
-bottom = pitchPosition("E", 4);
-
-top = pitchPosition("F", 5);
-
-} else {
-
-bottom = pitchPosition("G", 2);
-
-top = pitchPosition("A", 3); }
-
-/* Notes within the staff. */
-
-if (p >= bottom && p <= top) { return 0; }
-
-/* Notes above the staff. */
-
-if (p > top) {
-
-return (p - top) / 2; }
-
-/* Notes below the staff. */
-
-return -(bottom - p) / 2; }
-
-/* ======================================================== DRAW ======================================================== */
-
-function draw() {
-
-const score = document.getElementById("score");
-
-score.innerHTML = "";
-
-const renderer = new VF.Renderer( score, VF.Renderer.Backends.SVG );
-
-renderer.resize( 600, 380 );
-
-const context = renderer.getContext();
-
-/*
-
-SHORT STAFF
-
-*/
-
-const stave = new VF.Stave( 50, 125, 125 );
-
-stave.addClef(clef);
-
-stave.setContext(context);
-
-stave.draw();
-
-/*
-
-SELECTED NOTES
-
-*/
-
-const notes = piano.filter( n => n.letter === selectedLetter );
-
-const keys = notes.map(function (n) {
-
-return ( n.letter.toLowerCase() + "/" + n.octave );
-
-});
-
-/*
-
-WHOLE-NOTE CHORD
-
-*/
-
-const chord = new VF.StaveNote({ clef: clef, keys: keys, duration: "w" });
-
-const voice = new VF.Voice({ numbeats: 4, beatvalue: 4 });
-
-voice.addTickables([ chord ]);
-
-new VF.Formatter() .joinVoices([voice]) .format( [voice], 80 );
-
-voice.draw( context, stave );
-
-/*
-
-LABELS
-
-*/
-
-drawLabels( chord, notes ); }
-
-/* ======================================================== LABELS ======================================================== */
-
-function drawLabels(chord, notes) {
-
-const svg = document.querySelector( "#score svg" );
-
-if (!svg) { return; }
-
-/* Get the actual Y positions of the VexFlow noteheads. */
-
-const ys = chord.getYs();
-
-let noteX = 0;
-
-if ( typeof chord.getAbsoluteX === "function" ) {
-
-noteX = chord.getAbsoluteX(); }
-
-/* Keep labels close to the noteheads. */
-
-const labelX = noteX + 25;
-
-notes.forEach(function (note, index) {
-
-const y = ys[index];
-
-const count = ledgerLineCount( note.letter, note.octave );
-
-/* Notes inside the staff: C4
-
-Notes outside: F6/3.5 B3/-0.5 */
-
-let countText = "";
-
-if (count !== 0) {
-
-const formattedCount = Number.isInteger(count) ? String(count) : count.toFixed(1);
-
-const sign = count > 0 ? "+" : "";
-
-countText = "/" + sign + formattedCount; }
-
-const label = note.letter + note.octave + countText;
-
-/*
-
-SVG TEXT
-
-*/
-
-const text = document.createElementNS( "http://www.w3.org/2000/svg", "text" );
-
-text.setAttribute( "x", labelX );
-
-text.setAttribute( "y", y + 4 );
-
-text.setAttribute( "font-family", "Arial, sans-serif" );
-
-text.setAttribute( "font-size", "11" );
-
-text.setAttribute( "fill", "#333" );
-
-text.textContent = label;
-
-svg.appendChild(text);
-
-}); }
-
-/* ======================================================== CONTROLS ======================================================== */
-
-document .getElementById("clefSelect") .addEventListener( "change", function () {
-
-clef = this.value;
-
-draw(); } );
-
-document .getElementById("noteSelect") .addEventListener( "change", function () {
-
-selectedLetter = this.value;
-
-draw(); } );
-
-/* ======================================================== INITIAL DRAW ======================================================== */
-
-draw();
-
-});
-
-/* ============================================================ SERVICE WORKER ============================================================ */
-
-if ("serviceWorker" in navigator) {
-
-window.addEventListener( "load", function () {
-
-navigator.serviceWorker.register( "./service-worker.js" );
-
-} );
-
+  for (const letter of natural) {
+    if ( octave === 0 && letter !== "A" && letter !== "B" ) { continue; }
+    if ( octave === 8 && letter !== "C" ) { continue; }
+    piano.push({ letter, octave });
+  }
 }
 
-</script>
+/* DIATONIC POSITION */
+const letterIndex = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
+function pitchPosition(letter, octave) {
+  return octave * 7 + letterIndex[letter];
+}
 
-</body> </html>
+/* LEDGER POSITION */
+function ledgerLineCount(letter, octave) {
+  const p = pitchPosition(letter, octave);
+  let bottom;
+  let top;
+  if (clef === "treble") {
+    bottom = pitchPosition("E", 4);
+    top = pitchPosition("F", 5);
+  } else {
+    bottom = pitchPosition("G", 2);
+    top = pitchPosition("A", 3);
+  }
+  if (p >= bottom && p <= top) { return 0; }
+  if (p > top) { return (p - top) / 2; }
+  return -(bottom - p) / 2;
+}
+
+/* DRAW */
+function draw() {
+  const score = document.getElementById("score");
+  score.innerHTML = "";
+  const renderer = new VF.Renderer( score, VF.Renderer.Backends.SVG );
+  renderer.resize( 600, 380 );
+  const context = renderer.getContext();
+
+  const stave = new VF.Stave( 50, 125, 125 );
+  stave.addClef(clef);
+  stave.setContext(context);
+  stave.draw();
+
+  const notes = piano.filter( n => n.letter === selectedLetter );
+  const keys = notes.map(function (n) {
+    return ( n.letter.toLowerCase() + "/" + n.octave );
+  });
+
+  const chord = new VF.StaveNote({ clef: clef, keys: keys, duration: "w" });
+  const voice = new VF.Voice({ numbeats: 4, beatvalue: 4 });
+  voice.addTickables([ chord ]);
+  new VF.Formatter().joinVoices([voice]).format( [voice], 80 );
+  voice.draw( context, stave );
+
+  drawLabels( chord, notes );
+}
+
+/* LABELS */
+function drawLabels(chord, notes) {
+  const svg = document.querySelector( "#score svg" );
+  if (!svg) { return; }
+  const ys = chord.getYs();
+  let noteX = 0;
+  if ( typeof chord.getAbsoluteX === "function" ) {
+    noteX = chord.getAbsoluteX();
+  }
+  const labelX = noteX + 25;
+  notes.forEach(function (note, index) {
+    const y = ys[index];
+    const count = ledgerLineCount( note.letter, note.octave );
+    let countText = "";
+    if (count !== 0) {
+      const formattedCount = Number.isInteger(count) ? String(count) : count.toFixed(1);
+      const sign = count > 0 ? "+" : "";
+      countText = "/" + sign + formattedCount;
+    }
+    const label = note.letter + note.octave + countText;
+
+    const text = document.createElementNS( "http://www.w3.org/2000/svg", "text" );
+    text.setAttribute( "x", labelX );
+    text.setAttribute( "y", y + 4 );
+    text.setAttribute( "font-family", "Arial, sans-serif" );
+    text.setAttribute( "font-size", "11" );
+    text.setAttribute( "fill", "#333" );
+    text.textContent = label;
+    svg.appendChild(text);
+  });
+}
+
+/* CONTROLS */
+const clefButtons = document.querySelectorAll("#clefSwitch .clef-btn");
+clefButtons.forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    clefButtons.forEach(b => b.classList.remove("active"));
+    this.classList.add("active");
+    clef = this.getAttribute("data-value");
+    draw();
+  });
+});
+
+document.getElementById("noteSelect").addEventListener("change", function () {
+  selectedLetter = this.value;
+  draw();
+});
+
+/* INITIAL DRAW */
+draw();
+});
+
+/* SERVICE WORKER */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./service-worker.js");
+  });
+}
+</script>
+</body>
+</html>
