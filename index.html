@@ -1,0 +1,239 @@
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Ledger Notes</title>
+
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
+
+<style>
+
+body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-serif; }
+
+.app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); }
+
+h1 { margin: 0 0 8px 0; font-size: 26px; }
+
+.controls { display: flex; gap: 10px; margin-bottom: 0; }
+
+select { font-size: 17px; padding: 6px 10px; border: 1px solid #999; border-radius: 6px; background: white; }
+
+#score { width: 100%; height: 380px; background: white; overflow: visible; }
+
+</style> </head>
+
+<body>
+
+<div class="app">
+
+<h1>Ledger Notes</h1>
+
+<div class="controls">
+
+<select id="clefSelect"> <option value="treble">𝄞 Treble</option> <option value="bass">𝄢 Bass</option> </select>
+
+<select id="noteSelect"> <option value="C" selected>C</option> <option value="D">D</option> <option value="E">E</option> <option value="F">F</option> <option value="G">G</option> <option value="A">A</option> <option value="B">B</option> </select>
+
+</div>
+
+<div id="score"></div>
+
+</div>
+
+<script>
+
+window.addEventListener("load", function () {
+
+const VF = Vex.Flow;
+
+let clef = "treble"; let selectedLetter = "C";
+
+/* ======================================================== PIANO: A0 - C8 ======================================================== */
+
+const piano = [];
+
+const natural = [ "C", "D", "E", "F", "G", "A", "B" ];
+
+for (let octave = 0; octave <= 8; octave++) {
+
+for (const letter of natural) {
+
+if ( octave === 0 && letter !== "A" && letter !== "B" ) { continue; }
+
+if ( octave === 8 && letter !== "C" ) { continue; }
+
+piano.push({ letter, octave }); } }
+
+/* ======================================================== DIATONIC POSITION ======================================================== */
+
+const letterIndex = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
+
+function pitchPosition(letter, octave) {
+
+return octave * 7 + letterIndex[letter]; }
+
+/* ======================================================== LEDGER LINE COUNT ======================================================== */
+
+function ledgerLineCount(letter, octave) {
+
+const p = pitchPosition(letter, octave);
+
+let bottom; let top;
+
+if (clef === "treble") {
+
+bottom = pitchPosition("E", 4);
+
+top = pitchPosition("F", 5);
+
+} else {
+
+bottom = pitchPosition("G", 2);
+
+top = pitchPosition("A", 3); }
+
+if (p > top) {
+
+return Math.floor( (p - top) / 2 ); }
+
+if (p < bottom) {
+
+return -Math.floor( (bottom - p) / 2 ); }
+
+return 0; }
+
+/* ======================================================== DRAW ======================================================== */
+
+function draw() {
+
+const score = document.getElementById("score");
+
+score.innerHTML = "";
+
+const renderer = new VF.Renderer( score, VF.Renderer.Backends.SVG );
+
+/* Canvas remains wide enough for all labels, but the actual STAFF is only 125px long. */
+
+renderer.resize( 600, 380 );
+
+const context = renderer.getContext();
+
+/*
+
+VERY SHORT STAFF
+
+*/
+
+const stave = new VF.Stave( 50, 125, 125 );
+
+stave.addClef(clef);
+
+stave.setContext(context);
+
+stave.draw();
+
+/*
+
+SELECTED NOTES
+
+*/
+
+const notes = piano.filter( n => n.letter === selectedLetter );
+
+const keys = notes.map(function (n) {
+
+return ( n.letter.toLowerCase() + "/" + n.octave );
+
+});
+
+/*
+
+WHOLE-NOTE CHORD
+
+*/
+
+const chord = new VF.StaveNote({ clef: clef, keys: keys, duration: "w" });
+
+const voice = new VF.Voice({ numbeats: 4, beatvalue: 4 });
+
+voice.addTickables([ chord ]);
+
+new VF.Formatter() .joinVoices([voice]) .format( [voice], 80 );
+
+voice.draw( context, stave );
+
+/*
+
+LABELS
+
+*/
+
+drawLabels( chord, notes ); }
+
+/* ======================================================== LABELS ======================================================== */
+
+function drawLabels(chord, notes) {
+
+const svg = document.querySelector( "#score svg" );
+
+if (!svg) { return; }
+
+const ys = chord.getYs();
+
+let noteX = 0;
+
+if ( typeof chord.getAbsoluteX === "function" ) {
+
+noteX = chord.getAbsoluteX(); }
+
+/* Labels immediately to the right of the noteheads. */
+
+const labelX = noteX + 25;
+
+notes.forEach(function (note, index) {
+
+const y = ys[index];
+
+const count = ledgerLineCount( note.letter, note.octave );
+
+const countText = count > 0 ? "+" + count : String(count);
+
+const text = document.createElementNS( "http://www.w3.org/2000/svg", "text" );
+
+text.setAttribute( "x", labelX );
+
+text.setAttribute( "y", y + 4 );
+
+text.setAttribute( "font-family", "Arial, sans-serif" );
+
+text.setAttribute( "font-size", "11" );
+
+text.setAttribute( "fill", "#333" );
+
+text.textContent = note.letter + note.octave + "/" + countText;
+
+svg.appendChild(text);
+
+}); }
+
+/* ======================================================== CONTROLS ======================================================== */
+
+document .getElementById("clefSelect") .addEventListener( "change", function () {
+
+clef = this.value;
+
+draw(); } );
+
+document .getElementById("noteSelect") .addEventListener( "change", function () {
+
+selectedLetter = this.value;
+
+draw(); } );
+
+/* ======================================================== INITIAL DRAW ======================================================== */
+
+draw();
+
+});
+
+</script>
+
+</body> </html>
