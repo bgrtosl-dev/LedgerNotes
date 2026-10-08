@@ -1,12 +1,11 @@
 {
   "name": "Ledger Notes",
-  "short_name": "Ledger Notes",
-  "description": "Piano ledger note reference tool",
-  "start_url": "./",
+  "short_name": "LedgerNotes",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#eeeeee",
   "theme_color": "#ffffff",
-  "orientation": "portrait",
+  "description": "Shows ledger line notes across treble and bass clefs.",
   "icons": [
     {
       "src": "icon.svg",
