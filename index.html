@@ -74,7 +74,17 @@ function pitchPosition(letter, octave) {
 
 return octave * 7 + letterIndex[letter]; }
 
-/* ======================================================== LEDGER LINE COUNT ======================================================== */
+/* ======================================================== LEDGER POSITION ========================================================
+
+Notes inside the staff: no number is displayed.
+
+Outside the staff: each half staff-position = 0.5
+
+Therefore, for treble clef:
+
+G5 = /0.5 A5 = /1 B5 = /1.5 C6 = /2 D6 = /2.5 E6 = /3 F6 = /3.5
+
+======================================================== */
 
 function ledgerLineCount(letter, octave) {
 
@@ -94,15 +104,19 @@ bottom = pitchPosition("G", 2);
 
 top = pitchPosition("A", 3); }
 
+/* Notes within the staff. */
+
+if (p >= bottom && p <= top) { return 0; }
+
+/* Notes above the staff. */
+
 if (p > top) {
 
-return Math.floor( (p - top) / 2 ); }
+return (p - top) / 2; }
 
-if (p < bottom) {
+/* Notes below the staff. */
 
-return -Math.floor( (bottom - p) / 2 ); }
-
-return 0; }
+return -(bottom - p) / 2; }
 
 /* ======================================================== DRAW ======================================================== */
 
@@ -178,7 +192,7 @@ const svg = document.querySelector( "#score svg" );
 
 if (!svg) { return; }
 
-/* Get the REAL notehead positions from VexFlow. */
+/* Get the actual Y positions of the VexFlow noteheads. */
 
 const ys = chord.getYs();
 
@@ -188,7 +202,7 @@ if ( typeof chord.getAbsoluteX === "function" ) {
 
 noteX = chord.getAbsoluteX(); }
 
-/* Labels sit immediately to the right of the noteheads. */
+/* Keep labels close to the noteheads. */
 
 const labelX = noteX + 25;
 
@@ -198,7 +212,27 @@ const y = ys[index];
 
 const count = ledgerLineCount( note.letter, note.octave );
 
-const countText = count > 0 ? "+" + count : String(count);
+/* Notes inside the staff: C4
+
+Notes outside: F6/3.5 B3/-0.5 */
+
+let countText = "";
+
+if (count !== 0) {
+
+const formattedCount = Number.isInteger(count) ? String(count) : count.toFixed(1);
+
+const sign = count > 0 ? "+" : "";
+
+countText = "/" + sign + formattedCount; }
+
+const label = note.letter + note.octave + countText;
+
+/*
+
+SVG TEXT
+
+*/
 
 const text = document.createElementNS( "http://www.w3.org/2000/svg", "text" );
 
@@ -212,7 +246,7 @@ text.setAttribute( "font-size", "11" );
 
 text.setAttribute( "fill", "#333" );
 
-text.textContent = note.letter + note.octave + "/" + countText;
+text.textContent = label;
 
 svg.appendChild(text);
 
@@ -238,12 +272,18 @@ draw();
 
 });
 
-</script>
-<script>
+/* ============================================================ SERVICE WORKER ============================================================ */
+
 if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-        navigator.serviceWorker.register("./service-worker.js");
-    });
+
+window.addEventListener( "load", function () {
+
+navigator.serviceWorker.register( "./service-worker.js" );
+
+} );
+
 }
+
 </script>
+
 </body> </html>
