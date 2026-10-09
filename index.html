@@ -13,10 +13,13 @@
 body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-serif; }
 .app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); }
 h1 { margin: 0 0 8px 0; font-size: 26px; }
-.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 0; }
+.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 0; flex-wrap: wrap; }
 select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; border-radius: 6px; background: white; cursor: pointer; }
 .clef-toggle-btn { background: #2563eb; color: white; border: none; font-weight: bold; transition: background 0.2s; }
 .clef-toggle-btn:hover { background: #1d4ed8; }
+.step-btn-group { display: flex; gap: 4px; }
+.step-btn { padding: 6px 10px; font-weight: bold; background: #f3f4f6; }
+.step-btn:hover { background: #e5e7eb; }
 #score { width: 100%; height: 380px; background: white; overflow: visible; }
 </style>
 </head>
@@ -34,6 +37,12 @@ select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; bor
   <option value="A">A</option> 
   <option value="B">B</option> 
 </select>
+<div class="step-btn-group">
+  <button id="btnUp2" class="step-btn" title="Move 2 notes up">++</button>
+  <button id="btnUp1" class="step-btn" title="Move 1 note up">+</button>
+  <button id="btnDown1" class="step-btn" title="Move 1 note down">-</button>
+  <button id="btnDown2" class="step-btn" title="Move 2 notes down">--</button>
+</div>
 </div>
 <div id="score"></div>
 </div>
@@ -136,6 +145,18 @@ function drawLabels(chord, notes) {
   });
 }
 
+/* NOTE SHIFT HELPER */
+function shiftNote(steps) {
+  const currentIndex = natural.indexOf(selectedLetter);
+  let newIndex = (currentIndex + steps) % natural.length;
+  if (newIndex < 0) {
+    newIndex += natural.length;
+  }
+  selectedLetter = natural[newIndex];
+  document.getElementById("noteSelect").value = selectedLetter;
+  draw();
+}
+
 /* CONTROLS */
 const clefBtn = document.getElementById("clefToggleBtn");
 clefBtn.addEventListener("click", function () {
@@ -153,6 +174,11 @@ document.getElementById("noteSelect").addEventListener("change", function () {
   selectedLetter = this.value;
   draw();
 });
+
+document.getElementById("btnUp2").addEventListener("click", () => shiftNote(2));
+document.getElementById("btnUp1").addEventListener("click", () => shiftNote(1));
+document.getElementById("btnDown1").addEventListener("click", () => shiftNote(-1));
+document.getElementById("btnDown2").addEventListener("click", () => shiftNote(-2));
 
 /* INITIAL DRAW */
 draw();
