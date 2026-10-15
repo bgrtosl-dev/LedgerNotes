@@ -187,13 +187,23 @@ function shiftNote(steps) {
 /* CONTROLS */
 const clefBtn = document.getElementById("clefToggleBtn");
 clefBtn.addEventListener("click", function () {
+  const currentIndex = natural.indexOf(selectedLetter);
+  let newIndex;
+
   if (clef === "treble") {
     clef = "bass";
     this.textContent = "𝄢 Bass";
+    // Switching Treble -> Bass: add 2 degrees
+    newIndex = (currentIndex + 2) % natural.length;
   } else {
     clef = "treble";
     this.textContent = "𝄞 Treble";
+    // Switching Bass -> Treble: subtract 2 degrees
+    newIndex = (currentIndex - 2 + natural.length) % natural.length;
   }
+
+  selectedLetter = natural[newIndex];
+  document.getElementById("noteSelect").value = selectedLetter;
   draw();
 });
 
