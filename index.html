@@ -329,7 +329,8 @@ function detectStavesSlantStack(gray, cols, rows) {
   let maxVariance = -1;
   let bestProfile = new Array(rows).fill(0);
 
-  for (let angle = -10; angle <= 10; angle += 2) {
+  // Reduced angle scan range from -5 to +5 degrees in 1-degree steps
+  for (let angle = -5; angle <= 5; angle += 1) {
     let center = new cv.Point(roi.cols / 2, roi.rows / 2);
     let rotMat = cv.getRotationMatrix2D(center, angle, 1.0);
     let rotated = new cv.Mat();
@@ -468,29 +469,18 @@ function startRealtimeAnalysis() {
             overlayCtx.stroke();
           });
 
-          // Calculate half-step offset relative to bottom line (Line 4):
-          // Positive if above staff, negative if below staff
+          // Calculate offset relative to bottom line (Line 4):
+          // Positive if above staff, negative if below staff, rounded to closest half-integer
           let bottomLineY = closestStaff.lines[4];
           let topLineY = closestStaff.lines[0];
-          let spacing = closestStaff.spacing;
-          let halfStepSize = spacing / 2;
+          let halfStepSize = closestStaff.spacing / 2;
           
-          let halfStepOffset = 0;
-          if (centerY < topLineY) {
-            // Above staff
-            halfStepOffset = (topLineY - centerY) / halfStepSize + 8;
-          } else if (centerY > bottomLineY) {
-            // Below staff
-            halfStepOffset = -(centerY - bottomLineY) / halfStepSize;
-          } else {
-            // Inside staff (0 to 8)
-            halfStepOffset = (bottomLineY - centerY) / halfStepSize;
-          }
-          let roundedHalfStep = Math.round(halfStepOffset * 2) / 2;
+          let rawOffset = (bottomLineY - centerY) / halfStepSize;
+          let roundedHalfStep = Math.round(rawOffset * 2) / 2;
 
           latestAnalysisData = { halfStepOffset: roundedHalfStep };
           let signStr = roundedHalfStep > 0 ? "+" : "";
-          liveOffsetDisplay.textContent = `Offset: ${signStr}${roundedHalfStep.toFixed(1)} half-steps`;
+          liveOffsetDisplay.textContent = `Offset: ${signStr}${roundedHalfStep.toFixed(1)} steps`;
 
           // Ledger lines: 10% screen width centered, bright green
           if (centerY < topLineY || centerY > bottomLineY) {
@@ -502,8 +492,9 @@ function startRealtimeAnalysis() {
             overlayCtx.lineWidth = 2;
 
             if (centerY < topLineY) {
-              // Draw ledger lines above top line (indices 10, 12, 14...)
-              for (let hs = 10; hs <= roundedHalfStep; hs += 2) {
+              // Draw ledger lines above top line
+              let topOffsetSteps = Math.round((topLineY - centerY) / halfStepSize);
+              for (let hs = 9; hs <= 8 + topOffsetSteps; hs += 2) {
                 let ledgerY = topLineY - (hs - 8) * halfStepSize;
                 let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
                 let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
@@ -513,9 +504,10 @@ function startRealtimeAnalysis() {
                 overlayCtx.stroke();
               }
             } else if (centerY > bottomLineY) {
-              // Draw ledger lines below bottom line (indices -2, -4...)
-              for (let hs = -2; hs >= roundedHalfStep; hs -= 2) {
-                let ledgerY = bottomLineY - hs * halfStepSize;
+              // Draw ledger lines below bottom line
+              let botOffsetSteps = Math.round((centerY - bottomLineY) / halfStepSize);
+              for (let hs = 1; hs <= botOffsetSteps; hs += 2) {
+                let ledgerY = bottomLineY + hs * halfStepSize;
                 let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
                 let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
                 overlayCtx.beginPath();
