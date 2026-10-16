@@ -147,18 +147,33 @@ window.addEventListener("load", function () {
     draw();
   }
 
-  /* CONTROL LISTENERS */
-  const clefSelect = document.getElementById("clefSelect");
-  if (clefSelect) {
-    clefSelect.addEventListener("change", function () {
-      clef = this.value;
-      window.clef = clef;
+  /* CUSTOM CLEF DROPDOWN LOGIC */
+  const clefBtn = document.getElementById("clefSelectBtn");
+  const clefMenu = document.getElementById("clefMenu");
 
-      // Reset the number selector when clef changes
-      const rangeSelect = document.getElementById("rangeSelect");
-      if (rangeSelect) rangeSelect.value = "0";
+  if (clefBtn && clefMenu) {
+    clefBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clefMenu.style.display = clefMenu.style.display === "none" ? "block" : "none";
+    });
 
-      draw();
+    document.addEventListener("click", () => {
+      clefMenu.style.display = "none";
+    });
+
+    clefMenu.querySelectorAll(".dropdown-item").forEach(item => {
+      item.addEventListener("click", function () {
+        clef = this.getAttribute("data-value");
+        window.clef = clef;
+        clefBtn.textContent = (clef === "treble") ? "𝄞" : "𝄢";
+        clefMenu.style.display = "none";
+
+        // Reset the number selector when clef changes
+        const rangeSelect = document.getElementById("rangeSelect");
+        if (rangeSelect) rangeSelect.value = "0";
+
+        draw();
+      });
     });
   }
 
