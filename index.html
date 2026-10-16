@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>Ledger Notes</title>
+<title>ledger notes 4 dummies</title>
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
 <!-- Define Module.onRuntimeInitialized BEFORE loading opencv.js -->
 <script>
@@ -22,22 +22,41 @@ var Module = {
 <style>
 body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-serif; }
 .app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); }
-h1 { margin: 0 0 8px 0; font-size: 26px; display: flex; align-items: center; gap: 10px; }
-.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 0; flex-wrap: wrap; }
-select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; border-radius: 6px; background: white; cursor: pointer; }
-.clef-toggle-btn { background: #2563eb; color: white; border: none; font-weight: bold; transition: background 0.2s; }
-.clef-toggle-btn:hover { background: #1d4ed8; }
-.step-btn-group { display: flex; gap: 4px; }
-.step-btn { padding: 6px 10px; font-weight: bold; background: #f3f4f6; }
-.step-btn:hover { background: #e5e7eb; }
-#score { width: 100%; height: 380px; background: white; overflow: visible; }
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+h1 { margin: 0; font-size: 22px; }
+.header-utils { display: flex; gap: 10px; align-items: center; }
+.util-btn { background: #f3f4f6; border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
+
+.controls-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+select, button { font-size: 16px; padding: 6px 10px; border: 1px solid #999; border-radius: 6px; background: white; cursor: pointer; }
+
+/* Blue Symbol Clef Selector */
+#clefSelect {
+  background: #2563eb;
+  color: white;
+  border: none;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  padding: 2px 8px;
+}
+
+.step-btn-group { display: flex; gap: 6px; }
+.step-btn { padding: 6px 14px; font-weight: bold; background: #2563eb; color: white; border: none; border-radius: 6px; }
+.step-btn:hover { background: #1d4ed8; }
+
+#score { width: 100%; height: 280px; background: white; overflow: visible; display: flex; justify-content: flex-start; }
 </style>
 </head>
 <body>
 <div class="app">
-<h1>
-    <span id="qr-btn" style="cursor: pointer; display: inline-flex; align-items: center; vertical-align: middle;" title="Show QR Code">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <div class="header-row">
+    <h1>ledger notes 4 dummies</h1>
+    <div class="header-utils">
+      <button class="util-btn" id="helpBtn" title="Mini Help">?</button>
+      <button class="util-btn" id="qr-btn" title="Show QR Code">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect>
@@ -48,29 +67,45 @@ select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; bor
             <path d="M7 18h1v1H7z"></path>
             <path d="M10 10h4v4h-4z"></path>
         </svg>
-    </span>
-    Ledger Notes
-</h1>
-<div class="controls">
-<button id="clefToggleBtn" class="clef-toggle-btn">𝄞 Treble</button>
-<button id="cameraBtn" class="step-btn" title="Open Camera Tool" style="background: #2563eb; color: white;">📷</button>
-<select id="noteSelect">
-  <option value="C" selected>C</option>
-  <option value="D">D</option>
-  <option value="E">E</option>
-  <option value="F">F</option>
-  <option value="G">G</option>
-  <option value="A">A</option>
-  <option value="B">B</option>
-</select>
-<div class="step-btn-group">
-  <button id="btnUp2" class="step-btn" title="Move 2 notes up">++</button>
-  <button id="btnUp1" class="step-btn" title="Move 1 note up">+</button>
-  <button id="btnDown1" class="step-btn" title="Move 1 note down">-</button>
-  <button id="btnDown2" class="step-btn" title="Move 2 notes down">--</button>
-</div>
-</div>
-<div id="score"></div>
+      </button>
+    </div>
+  </div>
+
+  <div class="controls-container">
+    <!-- Top Row: Clef, Note, Number, Camera -->
+    <div class="controls">
+      <select id="clefSelect">
+        <option value="treble">𝄞</option>
+        <option value="bass">𝄢</option>
+      </select>
+
+      <select id="noteSelect">
+        <option value="C" selected>C</option>
+        <option value="D">D</option>
+        <option value="E">E</option>
+        <option value="F">F</option>
+        <option value="G">G</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+      </select>
+
+      <select id="rangeSelect">
+        <option value="" selected>ledger</option>
+      </select>
+
+      <button id="cameraBtn" class="step-btn" title="Open Camera Tool">📷</button>
+    </div>
+
+    <!-- Bottom Row: Step Buttons -->
+    <div class="step-btn-group">
+      <button id="btnDown2" class="step-btn" title="Move 2 notes down">--</button>
+      <button id="btnDown1" class="step-btn" title="Move 1 note down">-</button>
+      <button id="btnUp1" class="step-btn" title="Move 1 note up">+</button>
+      <button id="btnUp2" class="step-btn" title="Move 2 notes up">++</button>
+    </div>
+  </div>
+
+  <div id="score"></div>
 </div>
 
 <!-- Camera Overlay Modal -->
@@ -78,20 +113,30 @@ select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; bor
     <video id="camera-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0;"></video>
     <canvas id="camera-overlay-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none;"></canvas>
 
-    <!-- Hidden offset display element referenced in JS -->
-    <div id="live-offset-display" style="display: none;"></div>
+    <div id="live-offset-display" style="position: absolute; top: 20px; right: 20px; z-index: 2001; background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 8px; font-size: 16px; font-weight: bold; border: 1px solid rgba(255,255,255,0.3);">Offset: 0.0</div>
 
     <div style="position: absolute; bottom: 30px; z-index: 2001; display: flex; gap: 15px;">
         <button id="closeCameraBtn" style="padding: 10px 20px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
     </div>
-    <canvas id="canvas" style="display: none;"></canvas>
     <canvas id="camera-canvas" style="display: none;"></canvas>
+</div>
+
+<!-- Help Modal -->
+<div id="help-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+    <div style="background: white; color: #333; padding: 20px; border-radius: 12px; max-width: 280px; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #2563eb;">How to Use</h3>
+        <p style="font-size: 0.9rem; line-height: 1.4;"><strong>Clef:</strong> Switch between Treble (𝄞) and Bass (𝄢).</p>
+        <p style="font-size: 0.9rem; line-height: 1.4;"><strong>Note:</strong> Select a note letter to view it across octaves.</p>
+        <p style="font-size: 0.9rem; line-height: 1.4;"><strong>ledger:</strong> Jump directly to a specific ledger line number.</p>
+        <p style="font-size: 0.9rem; line-height: 1.4;"><strong>Camera:</strong> Scan real-world staff lines in real-time!</p>
+        <button id="closeHelpBtn" style="width: 100%; margin-top: 10px; background: #2563eb; color: white; border: none; padding: 8px; border-radius: 6px; font-weight: bold;">Got It</button>
+    </div>
 </div>
 
 <!-- QR Modal -->
 <div id="qr-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
     <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 260px;">
-        <p style="margin-top: 0; margin-bottom: 10px; font-weight: 600; font-size: 0.95rem;">Ledger Notes app</p>
+        <p style="margin-top: 0; margin-bottom: 10px; font-weight: 600; font-size: 0.95rem;">ledger notes 4 dummies</p>
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://bgrtosl-dev.github.io/LedgerNotes/" alt="QR Code" style="display: block; margin: 0 auto 10px auto; width: 180px; height: 180px;">
         <div style="font-size: 0.65rem; color: #475569; word-break: break-all; font-weight: 500;">
             <a href="https://bgrtosl-dev.github.io/LedgerNotes/" target="_blank" style="color: #2563eb; text-decoration: none;">https://bgrtosl-dev.github.io/LedgerNotes/</a>
@@ -99,8 +144,8 @@ select, button { font-size: 17px; padding: 6px 12px; border: 1px solid #999; bor
     </div>
 </div>
 
-<!-- Main Application Scripts -->
-<script src="js/script.js"></script>
+<!-- Application Scripts -->
 <script src="js/camera.js"></script>
+<script src="js/script.js"></script>
 </body>
 </html>
