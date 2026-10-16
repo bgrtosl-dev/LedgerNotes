@@ -1,0 +1,55 @@
+body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-serif; }
+.app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); box-sizing: border-box; }
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+h1 { margin: 0; font-size: 22px; }
+.header-utils { display: flex; gap: 10px; align-items: center; }
+.util-btn { background: #f3f4f6; border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
+
+.controls-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+select, button { font-size: 16px; padding: 6px 10px; border: 1px solid #999; border-radius: 6px; background: white; cursor: pointer; }
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+/* Custom Clef Dropdown Styles (keeps it small & inline on iPhone/Safari) */
+.custom-dropdown { position: relative; display: inline-block; }
+.clef-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  padding: 2px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 100px;
+}
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+}
+.dropdown-item:hover { background: #f3f4f6; }
+
+.step-btn-group { display: flex; gap: 6px; }
+.step-btn { padding: 6px 14px; font-weight: bold; background: #2563eb; color: white; border: none; border-radius: 6px; }
+.step-btn:hover { background: #1d4ed8; }
+
+#score { width: 100%; min-height: 480px; background: white; overflow: visible; display: flex; justify-content: flex-start; margin-top: 15px; box-sizing: border-box; }
+#score svg { width: 100%; height: auto; max-width: 100%; overflow: visible; }
