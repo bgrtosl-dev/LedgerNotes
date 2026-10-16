@@ -63,16 +63,17 @@ window.addEventListener("load", function () {
     }
   }
 
-  /* DRAW (75% length: 187px stave width, left-aligned) */
+  /* DRAW (Stave X at 30, Y moved up to 130) */
   function draw() {
     const score = document.getElementById("score");
     if (!score) { return; }
     score.innerHTML = "";
     const renderer = new VF.Renderer( score, VF.Renderer.Backends.SVG );
-    renderer.resize( 300, 250 );
+    renderer.resize( 320, 380 );
     const context = renderer.getContext();
 
-    const stave = new VF.Stave( 10, 75, 187 );
+    // Stave Y position moved up to 130
+    const stave = new VF.Stave( 30, 130, 180 );
     stave.addClef(clef);
     stave.setContext(context);
     stave.draw();
@@ -95,7 +96,7 @@ window.addEventListener("load", function () {
   }
   window.draw = draw;
 
-  /* LABELS WITH HALVED OFFSET (+22) */
+  /* LABELS */
   function drawLabels(chord, notes) {
     const scoreEl = document.getElementById("score");
     const svg = scoreEl ? scoreEl.querySelector( "svg" ) : null;
