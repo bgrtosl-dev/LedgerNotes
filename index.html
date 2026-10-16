@@ -8,6 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
 <title>ledger notes 4 dummies</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
 <!-- Define Module.onRuntimeInitialized BEFORE loading opencv.js -->
 <script>
@@ -19,36 +20,6 @@ var Module = {
 </script>
 <!-- OpenCV.js -->
 <script async src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
-<style>
-body { margin: 0; padding: 20px; background: #eeeeee; font-family: Arial, sans-serif; }
-.app { max-width: 600px; margin: auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 3px 15px rgba(0,0,0,.12); box-sizing: border-box; }
-.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-h1 { margin: 0; font-size: 22px; }
-.header-utils { display: flex; gap: 10px; align-items: center; }
-.util-btn { background: #f3f4f6; border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
-
-.controls-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-select, button { font-size: 16px; padding: 6px 10px; border: 1px solid #999; border-radius: 6px; background: white; cursor: pointer; }
-
-/* Blue Symbol Clef Selector */
-#clefSelect {
-  background: #2563eb;
-  color: white;
-  border: none;
-  font-size: 24px;
-  font-weight: bold;
-  text-align: center;
-  padding: 2px 8px;
-}
-
-.step-btn-group { display: flex; gap: 6px; }
-.step-btn { padding: 6px 14px; font-weight: bold; background: #2563eb; color: white; border: none; border-radius: 6px; }
-.step-btn:hover { background: #1d4ed8; }
-
-#score { width: 100%; min-height: 480px; background: white; overflow: visible; display: flex; justify-content: flex-start; margin-top: 15px; box-sizing: border-border; }
-#score svg { width: 100%; height: auto; max-width: 100%; overflow: visible; }
-</style>
 </head>
 <body>
 <div class="app">
@@ -75,10 +46,14 @@ select, button { font-size: 16px; padding: 6px 10px; border: 1px solid #999; bor
   <div class="controls-container">
     <!-- Top Row: Clef, Note, Number, Camera -->
     <div class="controls">
-      <select id="clefSelect">
-        <option value="treble">𝄞</option>
-        <option value="bass">𝄢</option>
-      </select>
+      <!-- Custom Clef Dropdown -->
+      <div class="custom-dropdown" id="clefDropdown">
+        <button id="clefSelectBtn" class="clef-btn">𝄞</button>
+        <div class="dropdown-menu" id="clefMenu" style="display: none;">
+          <div class="dropdown-item" data-value="treble">𝄞 Treble</div>
+          <div class="dropdown-item" data-value="bass">𝄢 Bass</div>
+        </div>
+      </div>
 
       <select id="noteSelect">
         <option value="C" selected>C</option>
