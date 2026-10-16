@@ -1,7 +1,3 @@
-/**
- * Ledger Notes App - Main Application Logic
- */
-
 window.addEventListener("load", function () {
   const VF = Vex.Flow;
   let clef = "treble";
@@ -72,13 +68,11 @@ window.addEventListener("load", function () {
     renderer.resize( 320, 380 );
     const context = renderer.getContext();
 
-    // Stave Y position moved up to 130
     const stave = new VF.Stave( 30, 130, 180 );
     stave.addClef(clef);
     stave.setContext(context);
     stave.draw();
 
-    // Render all notes of the selected letter across the entire piano
     const notes = piano.filter( n => n.letter === selectedLetter );
     const keys = notes.map(function (n) {
       return ( n.letter.toLowerCase() + "/" + n.octave );
@@ -140,40 +134,25 @@ window.addEventListener("load", function () {
     selectedLetter = natural[newIndex];
     document.getElementById("noteSelect").value = selectedLetter;
 
-    // Reset the number selector back to "ledger" (0) when using step buttons
     const rangeSelect = document.getElementById("rangeSelect");
     if (rangeSelect) rangeSelect.value = "0";
 
     draw();
   }
 
-  /* CUSTOM CLEF DROPDOWN LOGIC */
+  /* CLEF TOGGLE LOGIC */
   const clefBtn = document.getElementById("clefSelectBtn");
-  const clefMenu = document.getElementById("clefMenu");
 
-  if (clefBtn && clefMenu) {
-    clefBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      clefMenu.style.display = clefMenu.style.display === "none" ? "block" : "none";
-    });
+  if (clefBtn) {
+    clefBtn.addEventListener("click", () => {
+      clef = (clef === "treble") ? "bass" : "treble";
+      window.clef = clef;
+      clefBtn.textContent = (clef === "treble") ? "𝄞" : "𝄢";
 
-    document.addEventListener("click", () => {
-      clefMenu.style.display = "none";
-    });
+      const rangeSelect = document.getElementById("rangeSelect");
+      if (rangeSelect) rangeSelect.value = "0";
 
-    clefMenu.querySelectorAll(".dropdown-item").forEach(item => {
-      item.addEventListener("click", function () {
-        clef = this.getAttribute("data-value");
-        window.clef = clef;
-        clefBtn.textContent = (clef === "treble") ? "𝄞" : "𝄢";
-        clefMenu.style.display = "none";
-
-        // Reset the number selector when clef changes
-        const rangeSelect = document.getElementById("rangeSelect");
-        if (rangeSelect) rangeSelect.value = "0";
-
-        draw();
-      });
+      draw();
     });
   }
 
@@ -184,22 +163,21 @@ window.addEventListener("load", function () {
       const n = parseInt(this.value);
       let targetPitch;
 
-      // Map ledger line number to pitch according to exact specifications
       if (clef === "treble") {
         if (n > 0) {
-          targetPitch = 40 + (n - 1) * 2; // +1 is A5
+          targetPitch = 40 + (n - 1) * 2;
         } else if (n < 0) {
-          targetPitch = 28 + (n + 1) * 2; // -1 is C4
+          targetPitch = 28 + (n + 1) * 2;
         } else {
-          targetPitch = 30; // 0 ("ledger") is E4
+          targetPitch = 30;
         }
-      } else { // bass
+      } else {
         if (n > 0) {
-          targetPitch = 28 + (n - 1) * 2; // +1 is C4
+          targetPitch = 28 + (n - 1) * 2;
         } else if (n < 0) {
-          targetPitch = 16 + (n + 1) * 2; // -1 is E2
+          targetPitch = 16 + (n + 1) * 2;
         } else {
-          targetPitch = 18; // 0 ("ledger") is G2
+          targetPitch = 18;
         }
       }
 
@@ -217,7 +195,6 @@ window.addEventListener("load", function () {
     noteSelect.addEventListener("change", function () {
       selectedLetter = this.value;
 
-      // Reset the number selector when note selector is used
       const rangeSelect = document.getElementById("rangeSelect");
       if (rangeSelect) rangeSelect.value = "0";
 
