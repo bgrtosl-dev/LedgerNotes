@@ -8,7 +8,13 @@
  * - "below" (Note Below Staff): Places the horizontal reference line at the bottom third
  *   of the frame (y = rows * 0.67) and sets the Region of Interest (ROI) to the large
  *   window above it to detect staff lines and notes positioned below the staff.
+ *
+ * Note Convention:
+ * - Offsets "above" the staff are positive (+1.0, +2.0, etc.).
+ * - Offsets "below" the staff are negative by convention (-1.0, -2.0, etc.).
  */
+
+const show_histogram = false; // Debug flag: set to true to display binary QC & histogram overlay
 
 let mediaStream = null;
 let processingInterval = null;
@@ -23,6 +29,11 @@ const overlayCanvas = document.getElementById("camera-overlay-canvas");
 const liveOffsetDisplay = document.getElementById("live-offset-display");
 const btnNoteAbove = document.getElementById("btnNoteAbove");
 const btnNoteBelow = document.getElementById("btnNoteBelow");
+
+// Hide upper-right HUD element entirely since we are displaying at the cross
+if (liveOffsetDisplay) {
+  liveOffsetDisplay.style.display = "none";
+}
 
 btnNoteAbove.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -265,28 +276,31 @@ function startRealtimeAnalysis() {
         let binaryRoi = new cv.Mat();
         cv.threshold(gray, binaryRoi, thresholdVal, 255, cv.THRESH_BINARY);
 
-        let tempCvCanvas = document.createElement('canvas');
-        tempCvCanvas.width = binaryRoi.cols;
-        tempCvCanvas.height = binaryRoi.rows;
-        cv.imshow(tempCvCanvas, binaryRoi);
-        overlayCtx.drawImage(tempCvCanvas, bandStart, yOffset);
+        // Conditional Debug QC Rendering (controlled by show_histogram)
+        if (show_histogram) {
+          let tempCvCanvas = document.createElement('canvas');
+          tempCvCanvas.width = binaryRoi.cols;
+          tempCvCanvas.height = binaryRoi.rows;
+          cv.imshow(tempCvCanvas, binaryRoi);
+          overlayCtx.drawImage(tempCvCanvas, bandStart, yOffset);
 
-        let histX = 20;
-        let histWidth = bandWidth * 0.5;
-        let histHeight = histWidth * 0.75;
+          let histX = 20;
+          let histWidth = bandWidth * 0.5;
+          let histHeight = histWidth * 0.75;
 
-        overlayCtx.fillStyle = "#FF6600";
-        overlayCtx.fillRect(histX, centerY - histHeight, histWidth, histHeight);
+          overlayCtx.fillStyle = "#FF6600";
+          overlayCtx.fillRect(histX, centerY - histHeight, histWidth, histHeight);
 
-        let binWidth = histWidth / 20;
-        for (let b = 0; b < 20; b++) {
-          let binVal = hist.floatAt(b, 0);
-          let binH = (binVal / (maxBinVal > 0 ? maxBinVal : 1)) * histHeight;
-          let bx = histX + (b * binWidth);
-          let by = centerY - binH;
+          let binWidth = histWidth / 20;
+          for (let b = 0; b < 20; b++) {
+            let binVal = hist.floatAt(b, 0);
+            let binH = (binVal / (maxBinVal > 0 ? maxBinVal : 1)) * histHeight;
+            let bx = histX + (b * binWidth);
+            let by = centerY - binH;
 
-          overlayCtx.fillStyle = (b < thresholdBin) ? "#000000" : "#FFFFFF";
-          overlayCtx.fillRect(bx, by, binWidth - 1, binH);
+            overlayCtx.fillStyle = (b < thresholdBin) ? "#000000" : "#FFFFFF";
+            overlayCtx.fillRect(bx, by, binWidth - 1, binH);
+          }
         }
         hist.delete();
 
@@ -299,30 +313,33 @@ function startRealtimeAnalysis() {
           let rad = -bestAngle * Math.PI / 180;
           let tanVal = Math.tan(rad);
 
-          overlayCtx.save();
-          overlayCtx.beginPath();
-          overlayCtx.rect(bandStart, yOffset, bandWidth, roiRect.height);
-          overlayCtx.clip();
+          // Render Slant Stack Profile strictly vertical along graphCenterX (if show_histogram is enabled)
+          if (show_histogram) {
+            overlayCtx.save();
+            overlayCtx.beginPath();
+            overlayCtx.rect(bandStart, yOffset, bandWidth, roiRect.height);
+            overlayCtx.clip();
 
-          overlayCtx.fillStyle = "rgba(255, 0, 0, 0.25)";
-          overlayCtx.strokeStyle = "rgba(255, 0, 0, 0.8)";
-          overlayCtx.lineWidth = 1.5;
+            overlayCtx.fillStyle = "rgba(255, 0, 0, 0.25)";
+            overlayCtx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+            overlayCtx.lineWidth = 1.5;
 
-          overlayCtx.beginPath();
-          overlayCtx.moveTo(graphCenterX, yOffset);
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(graphCenterX, yOffset);
 
-          for (let y = 0; y < binaryRoi.rows; y++) {
-            let amplitude = (profile[y] / maxVal) * maxGraphWidth;
-            let baseY = yOffset + y;
-            let x = graphCenterX + amplitude;
-            overlayCtx.lineTo(x, baseY);
+            for (let y = 0; y < binaryRoi.rows; y++) {
+              let amplitude = (profile[y] / maxVal) * maxGraphWidth;
+              let baseY = yOffset + y;
+              let x = graphCenterX + amplitude;
+              overlayCtx.lineTo(x, baseY);
+            }
+
+            overlayCtx.lineTo(graphCenterX, yOffset + binaryRoi.rows - 1);
+            overlayCtx.closePath();
+            overlayCtx.fill();
+            overlayCtx.stroke();
+            overlayCtx.restore();
           }
-
-          overlayCtx.lineTo(graphCenterX, yOffset + binaryRoi.rows - 1);
-          overlayCtx.closePath();
-          overlayCtx.fill();
-          overlayCtx.stroke();
-          overlayCtx.restore();
 
           if (staves.length > 0) {
             staves.forEach(staff => {
@@ -367,12 +384,15 @@ function startRealtimeAnalysis() {
 
             roundedSteps = Math.round(rawSteps * 2) / 2;
 
+            // Apply negative convention for notes below the staff
+            if (searchDirection === "below") {
+              roundedSteps = -roundedSteps;
+            }
+
             let topPitch = (window.clef === "treble") ? window.pitchPosition("F", 5) : window.pitchPosition("A", 3);
             let baseLinePitch = topPitch - (closestLineIdx * 2);
             let targetPitch = baseLinePitch + Math.round(roundedSteps * 2);
 
-            let signStr = roundedSteps >= 0 ? "+" : "";
-            liveOffsetDisplay.textContent = `Offset: ${signStr}${roundedSteps.toFixed(1)} steps`;
             latestAnalysisData = { targetPitch };
 
             overlayCtx.save();
@@ -405,8 +425,9 @@ function startRealtimeAnalysis() {
             overlayCtx.strokeStyle = "rgba(0, 255, 0, 0.9)";
             overlayCtx.lineWidth = 2;
 
-            if (searchDirection === "above" && roundedSteps >= 1) {
-              for (let lineVal = 1; lineVal <= Math.floor(roundedSteps); lineVal++) {
+            let absSteps = Math.abs(roundedSteps);
+            if (searchDirection === "above" && absSteps >= 1) {
+              for (let lineVal = 1; lineVal <= Math.floor(absSteps); lineVal++) {
                 let ledgerY = topLineY - (lineVal * closestStaff.spacing);
                 let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
                 let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
@@ -415,8 +436,8 @@ function startRealtimeAnalysis() {
                 overlayCtx.lineTo(ledgerEndX, lEnd);
                 overlayCtx.stroke();
               }
-            } else if (searchDirection === "below" && roundedSteps >= 1) {
-              for (let lineVal = 1; lineVal <= Math.floor(roundedSteps); lineVal++) {
+            } else if (searchDirection === "below" && absSteps >= 1) {
+              for (let lineVal = 1; lineVal <= Math.floor(absSteps); lineVal++) {
                 let ledgerY = bottomLineY + (lineVal * closestStaff.spacing);
                 let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
                 let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
@@ -428,10 +449,9 @@ function startRealtimeAnalysis() {
             }
             overlayCtx.restore();
 
-          } else {
-            liveOffsetDisplay.textContent = "Offset: --";
           }
 
+          // Render rounded step counter next to the red cross in the center
           if (staves.length > 0 && smoothedStaffLines) {
             overlayCtx.fillStyle = "#ef4444";
             overlayCtx.font = "bold 15px Arial, sans-serif";
