@@ -1,12 +1,10 @@
 /**
  * Ledger Notes App - Camera & OpenCV Analysis Module
- *
  * Unified Staff Mode:
  * - Reference cross centered at rows * 0.5 (middle staff line).
  * - Slant-stack orientation and line detection.
- * - Ledger lines from -13 to +10 with staggered Bass Clef (even/left) and Treble Clef (odd/right) note naming + octaves.
- * - Slimmer, cleaner Bass clef (𝄢) and Treble clef (𝄞) symbols positioned at the +2 ledger line height.
- * - Styled with High-Vis Neon Orange.
+ * - Staff detection limited to a maximum of 4 staff-line intervals from the red center line.
+ * - Ledger lines from -13 to +10 with staggered Bass Clef and Treble Clef note naming + octaves.
  */
 
 const show_histogram = false;
@@ -132,7 +130,7 @@ function detectStavesSlantStack(binaryRoi, cols, rows) {
 
   let minima = [];
   let pRows = bestProfile.length;
-  let meanVal = bestProfile.reduce((a,b)=>a+b,0) / pRows;
+  let meanVal = bestProfile.reduce((a, b) => a + b, 0) / pRows;
   for (let y = 2; y < pRows - 2; y++) {
     if (bestProfile[y] > bestProfile[y-1] && bestProfile[y] > bestProfile[y-2] &&
         bestProfile[y] >= bestProfile[y+1] && bestProfile[y] >= bestProfile[y+2] &&
@@ -272,8 +270,6 @@ function startRealtimeAnalysis() {
 
         let { staves, profile, bestAngle } = detectStavesSlantStack(binaryRoi, binaryRoi.cols, binaryRoi.rows);
 
-        let roundedSteps = 0;
-
         if (profile && profile.length > 0) {
           let maxVal = Math.max(...profile, 1);
           let rad = -bestAngle * Math.PI / 180;
@@ -311,127 +307,134 @@ function startRealtimeAnalysis() {
               staff.lines = staff.lines.map(y => y + yOffset);
             });
 
-            let rawClosestStaff = staves.reduce((prev, curr) =>
-              Math.abs(curr.lines[2] - centerY) < Math.abs(prev.lines[2] - centerY) ? curr : prev
-            );
-
-            let alpha = 0.35;
-            if (!smoothedStaffLines) {
-              smoothedStaffLines = [...rawClosestStaff.lines];
-            } else {
-              for (let idx = 0; idx < 5; idx++) {
-                smoothedStaffLines[idx] = alpha * rawClosestStaff.lines[idx] + (1 - alpha) * smoothedStaffLines[idx];
-              }
-            }
-            let closestStaff = { lines: smoothedStaffLines, spacing: rawClosestStaff.spacing, angle: rawClosestStaff.angle };
-
-            let topLineY = closestStaff.lines[0];
-            let bottomLineY = closestStaff.lines[4];
-
-            // Note mapping dictionaries for ledger lines with octave numbers:
-            const bassEvenAbove = { 2: "E4", 4: "B4", 6: "F5", 8: "C6", 10: "G6" };
-            const bassEvenBelow = { 2: "C2", 4: "F1", 6: "B0", 8: "E0", 10: "A-1", 12: "D-1" };
-            const trebleOddAbove = { 1: "A5", 3: "E6", 5: "B6", 7: "F7", 9: "C8" };
-            const trebleOddBelow = { 1: "C4", 3: "F3", 5: "B2", 7: "E2", 9: "A1", 11: "D1", 13: "G0" };
-
-            let staffWidth = cols * 0.25;
-            let staffStartX = midX - staffWidth / 2;
-            let staffEndX = midX + staffWidth / 2;
-
-            overlayCtx.lineWidth = 2.5;
-            overlayCtx.strokeStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
-
-            closestStaff.lines.forEach(lineY => {
-              let yStart = lineY + (staffStartX - midX) * tanVal;
-              let yEnd = lineY + (staffEndX - midX) * tanVal;
-
-              overlayCtx.beginPath();
-              overlayCtx.moveTo(staffStartX, yStart);
-              overlayCtx.lineTo(staffEndX, yEnd);
-              overlayCtx.stroke();
+            // Limit detection to staves whose middle line (index 2) is within 4 staff-line intervals from the red center line
+            let validStaves = staves.filter(staff => {
+              let middleLineY = staff.lines[2];
+              return Math.abs(middleLineY - centerY) <= (4 * staff.spacing);
             });
 
-            let staffWidthLocal = cols * 0.25;
-            let ledgerWidth = staffWidthLocal / 5;
-            let ledgerStartX = midX - ledgerWidth / 2;
-            let ledgerEndX = midX + ledgerWidth / 2;
+            if (validStaves.length > 0) {
+              let rawClosestStaff = validStaves.reduce((prev, curr) =>
+                Math.abs(curr.lines[2] - centerY) < Math.abs(prev.lines[2] - centerY) ? curr : prev
+              );
 
-            overlayCtx.strokeStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
-            overlayCtx.lineWidth = 2;
-            overlayCtx.font = "13px Arial, sans-serif";
-            overlayCtx.textBaseline = "middle";
-
-            // Render Ledger Lines Above Staff (+1 to +10)
-            let maxAboveLines = 10;
-            for (let lineVal = 1; lineVal <= maxAboveLines; lineVal++) {
-              let ledgerY = topLineY - (lineVal * closestStaff.spacing);
-              let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
-              let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
-
-              overlayCtx.beginPath();
-              overlayCtx.moveTo(ledgerStartX, lStart);
-              overlayCtx.lineTo(ledgerEndX, lEnd);
-              overlayCtx.stroke();
-
-              if (lineVal % 2 === 0) {
-                let noteName = bassEvenAbove[lineVal] || "";
-                let labelText = `+${lineVal} ${noteName}`;
-                overlayCtx.textAlign = "right";
-                overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                overlayCtx.fillText(labelText, ledgerStartX - 6, lEnd);
+              let alpha = 0.35;
+              if (!smoothedStaffLines) {
+                smoothedStaffLines = [...rawClosestStaff.lines];
               } else {
-                let noteName = trebleOddAbove[lineVal] || "";
-                let labelText = `+${lineVal} ${noteName}`;
-                overlayCtx.textAlign = "left";
-                overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                overlayCtx.fillText(labelText, ledgerEndX + 6, lEnd);
+                for (let idx = 0; idx < 5; idx++) {
+                  smoothedStaffLines[idx] = alpha * rawClosestStaff.lines[idx] + (1 - alpha) * smoothedStaffLines[idx];
+                }
               }
-            }
+              let closestStaff = { lines: smoothedStaffLines, spacing: rawClosestStaff.spacing, angle: rawClosestStaff.angle };
 
-            // Render Ledger Lines Below Staff (-1 to -13)
-            let maxBelowLines = 13;
-            for (let lineVal = 1; lineVal <= maxBelowLines; lineVal++) {
-              let ledgerY = bottomLineY + (lineVal * closestStaff.spacing);
-              let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
-              let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
+              let topLineY = closestStaff.lines[0];
+              let bottomLineY = closestStaff.lines[4];
 
-              overlayCtx.beginPath();
-              overlayCtx.moveTo(ledgerStartX, lStart);
-              overlayCtx.lineTo(ledgerEndX, lEnd);
-              overlayCtx.stroke();
+              // Note mapping dictionaries for ledger lines with octave numbers:
+              const bassEvenAbove = { 2: "E4", 4: "B4", 6: "F5", 8: "C6", 10: "G6" };
+              const bassEvenBelow = { 2: "C2", 4: "F1", 6: "B0", 8: "E0", 10: "A-1", 12: "D-1" };
+              const trebleOddAbove = { 1: "A5", 3: "E6", 5: "B6", 7: "F7", 9: "C8" };
+              const trebleOddBelow = { 1: "C4", 3: "F3", 5: "B2", 7: "E2", 9: "A1", 11: "D1", 13: "G0" };
 
-              if (lineVal % 2 === 0) {
-                let noteName = bassEvenBelow[lineVal] || "";
-                let labelText = `-${lineVal} ${noteName}`;
-                overlayCtx.textAlign = "right";
-                overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                overlayCtx.fillText(labelText, ledgerStartX - 6, lEnd);
-              } else {
-                let noteName = trebleOddBelow[lineVal] || "";
-                let labelText = `-${lineVal} ${noteName}`;
-                overlayCtx.textAlign = "left";
-                overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                overlayCtx.fillText(labelText, ledgerEndX + 6, lEnd);
+              let staffWidth = cols * 0.25;
+              let staffStartX = midX - staffWidth / 2;
+              let staffEndX = midX + staffWidth / 2;
+
+              overlayCtx.lineWidth = 2.5;
+              overlayCtx.strokeStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
+
+              closestStaff.lines.forEach(lineY => {
+                let yStart = lineY + (staffStartX - midX) * tanVal;
+                let yEnd = lineY + (staffEndX - midX) * tanVal;
+
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(staffStartX, yStart);
+                overlayCtx.lineTo(staffEndX, yEnd);
+                overlayCtx.stroke();
+              });
+
+              let staffWidthLocal = cols * 0.25;
+              let ledgerWidth = staffWidthLocal / 5;
+              let ledgerStartX = midX - ledgerWidth / 2;
+              let ledgerEndX = midX + ledgerWidth / 2;
+
+              overlayCtx.strokeStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
+              overlayCtx.lineWidth = 2;
+              overlayCtx.font = "13px Arial, sans-serif";
+              overlayCtx.textBaseline = "middle";
+
+              // Render Ledger Lines Above Staff (+1 to +10)
+              let maxAboveLines = 10;
+              for (let lineVal = 1; lineVal <= maxAboveLines; lineVal++) {
+                let ledgerY = topLineY - (lineVal * closestStaff.spacing);
+                let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
+                let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
+
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(ledgerStartX, lStart);
+                overlayCtx.lineTo(ledgerEndX, lEnd);
+                overlayCtx.stroke();
+
+                if (lineVal % 2 === 0) {
+                  let noteName = bassEvenAbove[lineVal] || "";
+                  let labelText = `+${lineVal} ${noteName}`;
+                  overlayCtx.textAlign = "right";
+                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
+                  overlayCtx.fillText(labelText, ledgerStartX - 6, lEnd);
+                } else {
+                  let noteName = trebleOddAbove[lineVal] || "";
+                  let labelText = `+${lineVal} ${noteName}`;
+                  overlayCtx.textAlign = "left";
+                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
+                  overlayCtx.fillText(labelText, ledgerEndX + 6, lEnd);
+                }
               }
+
+              // Render Ledger Lines Below Staff (-1 to -13)
+              let maxBelowLines = 13;
+              for (let lineVal = 1; lineVal <= maxBelowLines; lineVal++) {
+                let ledgerY = bottomLineY + (lineVal * closestStaff.spacing);
+                let lStart = ledgerY + (ledgerStartX - midX) * tanVal;
+                let lEnd = ledgerY + (ledgerEndX - midX) * tanVal;
+
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(ledgerStartX, lStart);
+                overlayCtx.lineTo(ledgerEndX, lEnd);
+                overlayCtx.stroke();
+
+                if (lineVal % 2 === 0) {
+                  let noteName = bassEvenBelow[lineVal] || "";
+                  let labelText = `-${lineVal} ${noteName}`;
+                  overlayCtx.textAlign = "right";
+                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
+                  overlayCtx.fillText(labelText, ledgerStartX - 6, lEnd);
+                } else {
+                  let noteName = trebleOddBelow[lineVal] || "";
+                  let labelText = `-${lineVal} ${noteName}`;
+                  overlayCtx.textAlign = "left";
+                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
+                  overlayCtx.fillText(labelText, ledgerEndX + 6, lEnd);
+                }
+              }
+
+              // Render Slimmer, Cleaner Clef Symbols at +2 ledger line height
+              let line2AboveY = topLineY - (2 * closestStaff.spacing);
+              let bassClefY = line2AboveY + (staffStartX - midX) * tanVal;
+              let trebleClefY = line2AboveY + (staffEndX - midX) * tanVal;
+
+              overlayCtx.font = "56px 'Apple Symbols', 'Cambria Math', 'Times New Roman', sans-serif";
+              overlayCtx.textBaseline = "middle";
+              overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
+
+              // Bass Clef Symbol (𝄢) to the left of staffStartX at +2 ledger height
+              overlayCtx.textAlign = "right";
+              overlayCtx.fillText("𝄢", staffStartX - 15, bassClefY);
+
+              // Treble Clef Symbol (𝄞) to the right of staffEndX at +2 ledger height
+              overlayCtx.textAlign = "left";
+              overlayCtx.fillText("𝄞", staffEndX + 15, trebleClefY);
             }
-
-            // Render Slimmer, Cleaner Clef Symbols at +2 ledger line height
-            let line2AboveY = topLineY - (2 * closestStaff.spacing);
-            let bassClefY = line2AboveY + (staffStartX - midX) * tanVal;
-            let trebleClefY = line2AboveY + (staffEndX - midX) * tanVal;
-
-            overlayCtx.font = "56px 'Apple Symbols', 'Cambria Math', 'Times New Roman', sans-serif";
-            overlayCtx.textBaseline = "middle";
-            overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
-
-            // Bass Clef Symbol (𝄢) to the left of staffStartX at +2 ledger height
-            overlayCtx.textAlign = "right";
-            overlayCtx.fillText("𝄢", staffStartX - 15, bassClefY);
-
-            // Treble Clef Symbol (𝄞) to the right of staffEndX at +2 ledger height
-            overlayCtx.textAlign = "left";
-            overlayCtx.fillText("𝄞", staffEndX + 15, trebleClefY);
-
           }
         }
 
