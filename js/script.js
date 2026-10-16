@@ -266,9 +266,14 @@ function detectStavesSlantStack(gray, cols, rows) {
     let d3 = group[3] - group[2];
     let d4 = group[4] - group[3];
     let avgD = (d1 + d2 + d3 + d4) / 4;
-    let maxDiff = Math.max(Math.abs(d1 - avgD), Math.abs(d2 - avgD), Math.abs(d3 - avgD), Math.abs(d4 - avgD));
 
-    if (avgD > 6 && avgD < 60 && maxDiff < avgD * 0.3) {
+    // Least-squares validation using your formula
+    let d = avgD;
+    let Emin = Math.pow(d - d1, 2) + Math.pow(d - d2, 2) + Math.pow(d - d3, 2) + Math.pow(d - d4, 2);
+    let E0 = Math.pow(d1, 2) + Math.pow(d2, 2) + Math.pow(d3, 2) + Math.pow(d4, 2);
+    let rho = E0 > 0 ? (E0 - Emin) / E0 : 0;
+
+    if (avgD > 6 && avgD < 60 && rho > 0.8) {
       staves.push({ lines: group, spacing: avgD, angle: bestAngle });
       i += 4;
     }
