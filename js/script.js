@@ -45,15 +45,20 @@ window.addEventListener("load", function () {
     return -(bottom - p) / 2;
   }
 
-  /* POPULATE NUMBER SELECTOR WITH "ledger" DEFAULT OPTION */
+  /* POPULATE NUMBER SELECTOR (-6 to +6 with "ledger" replacing 0) */
   function initRangeSelector() {
     const rangeSelect = document.getElementById("rangeSelect");
     if (!rangeSelect) return;
-    rangeSelect.innerHTML = '<option value="" selected>ledger</option>';
-    for (let i = 10; i >= -13; i--) {
+    rangeSelect.innerHTML = "";
+    for (let i = 6; i >= -6; i--) {
       let opt = document.createElement("option");
       opt.value = i;
-      opt.text = (i > 0 ? "+" + i : i);
+      if (i === 0) {
+        opt.text = "ledger";
+        opt.selected = true; // Default to "ledger"
+      } else {
+        opt.text = (i > 0 ? "+" + i : i);
+      }
       rangeSelect.appendChild(opt);
     }
   }
@@ -134,9 +139,9 @@ window.addEventListener("load", function () {
     selectedLetter = natural[newIndex];
     document.getElementById("noteSelect").value = selectedLetter;
 
-    // Reset the number selector to "ledger" when using step buttons
+    // Reset the number selector back to "ledger" (0) when using step buttons
     const rangeSelect = document.getElementById("rangeSelect");
-    if (rangeSelect) rangeSelect.value = "";
+    if (rangeSelect) rangeSelect.value = "0";
 
     draw();
   }
@@ -150,7 +155,7 @@ window.addEventListener("load", function () {
 
       // Reset the number selector when clef changes
       const rangeSelect = document.getElementById("rangeSelect");
-      if (rangeSelect) rangeSelect.value = "";
+      if (rangeSelect) rangeSelect.value = "0";
 
       draw();
     });
@@ -167,14 +172,18 @@ window.addEventListener("load", function () {
       if (clef === "treble") {
         if (n > 0) {
           targetPitch = 40 + (n - 1) * 2; // +1 is A5
-        } else {
+        } else if (n < 0) {
           targetPitch = 28 + (n + 1) * 2; // -1 is C4
+        } else {
+          targetPitch = 30; // 0 ("ledger") is E4
         }
       } else { // bass
         if (n > 0) {
           targetPitch = 28 + (n - 1) * 2; // +1 is C4
-        } else {
+        } else if (n < 0) {
           targetPitch = 16 + (n + 1) * 2; // -1 is E2
+        } else {
+          targetPitch = 18; // 0 ("ledger") is G2
         }
       }
 
@@ -194,7 +203,7 @@ window.addEventListener("load", function () {
 
       // Reset the number selector when note selector is used
       const rangeSelect = document.getElementById("rangeSelect");
-      if (rangeSelect) rangeSelect.value = "";
+      if (rangeSelect) rangeSelect.value = "0";
 
       draw();
     });
@@ -242,7 +251,7 @@ window.addEventListener("load", function () {
   /* INITIALIZATION */
   initRangeSelector();
   const rangeSelectEl = document.getElementById("rangeSelect");
-  if (rangeSelectEl) rangeSelectEl.value = "";
+  if (rangeSelectEl) rangeSelectEl.value = "0";
 
   const noteSelectEl = document.getElementById("noteSelect");
   if (noteSelectEl) noteSelectEl.value = selectedLetter;
