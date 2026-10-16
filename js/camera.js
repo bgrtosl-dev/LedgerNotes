@@ -1,15 +1,17 @@
 /**
- * Ledger Notes App - Camera & OpenCV Analysis Module
- * Unified Staff Mode:
- * - Reference cross centered at rows * 0.5 (middle staff line).
- * - Slant-stack orientation and line detection.
- * - Staff detection limited to a maximum of 4 staff-line intervals from the red center line.
- * - Ledger lines from -13 to +10 with staggered Bass Clef and Treble Clef note naming + octaves.
+- Ledger Notes App - Camera & OpenCV Analysis Module
+
+- Unified Staff Mode:
+- Reference cross centered at rows * 0.5 (middle staff line).
+- Slant-stack orientation and line detection.
+- Optional "Lock Staff Center" mode.
+- Ledger lines from -13 to +10 with independently scaled Bass (+10%) & Treble (+20%) note naming + octaves.
  */
 
 const show_histogram = false;
 const show_slant = false;
 const display_bw = false;
+let lockCenterEnabled = false;
 
 let mediaStream = null;
 let processingInterval = null;
@@ -25,6 +27,25 @@ const liveOffsetDisplay = document.getElementById("live-offset-display");
 // Hide upper-right HUD element entirely
 if (liveOffsetDisplay) {
   liveOffsetDisplay.style.display = "none";
+}
+
+// Create and inject Lock Center Toggle UI into camera overlay if not present
+let lockToggleContainer = document.getElementById("lockToggleContainer");
+if (!lockToggleContainer && cameraOverlay) {
+  lockToggleContainer = document.createElement("div");
+  lockToggleContainer.id = "lockToggleContainer";
+  lockToggleContainer.style.cssText = "position: absolute; top: 15px; left: 15px; z-index: 1000; color: white; display: flex; align-items: center; gap: 8px; font-family: Arial, sans-serif;";
+  lockToggleContainer.innerHTML = `
+    <label style="cursor: pointer; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 6px; font-size: 14px; border: 1px solid rgba(255,255,255,0.2);">
+      <input type="checkbox" id="lockCenterToggle" style="cursor: pointer; width: 16px; height: 16px;"> Lock Staff Center
+    </label>
+  `;
+  cameraOverlay.appendChild(lockToggleContainer);
+
+  document.getElementById("lockCenterToggle").addEventListener("change", (e) => {
+    lockCenterEnabled = e.target.checked;
+    smoothedStaffLines = null; // Reset smoothing when toggling
+  });
 }
 
 document.getElementById("cameraBtn").addEventListener("click", async () => {
@@ -62,7 +83,7 @@ document.getElementById("closeCameraBtn").addEventListener("click", () => {
 });
 
 cameraOverlay.addEventListener("click", (e) => {
-  if (e.target.tagName === "BUTTON") return;
+  if (e.target.tagName === "INPUT" || e.target.tagName === "LABEL" || e.target.tagName === "BUTTON") return;
   if (latestAnalysisData && latestAnalysisData.targetPitch !== undefined) {
     const targetPitch = latestAnalysisData.targetPitch;
     const letterIndexVal = ((targetPitch % 7) + 7) % 7;
@@ -162,7 +183,7 @@ function detectStavesSlantStack(binaryRoi, cols, rows) {
     }
   }
 
-  return { staves, profile: bestProfile, bestAngle };
+  return { staves, profile: bestProfile, bestAngle, minima };
 }
 
 function startRealtimeAnalysis() {
@@ -268,7 +289,7 @@ function startRealtimeAnalysis() {
         }
         hist.delete();
 
-        let { staves, profile, bestAngle } = detectStavesSlantStack(binaryRoi, binaryRoi.cols, binaryRoi.rows);
+        let { staves, profile, bestAngle, minima } = detectStavesSlantStack(binaryRoi, binaryRoi.cols, binaryRoi.rows);
 
         if (profile && profile.length > 0) {
           let maxVal = Math.max(...profile, 1);
@@ -307,11 +328,24 @@ function startRealtimeAnalysis() {
               staff.lines = staff.lines.map(y => y + yOffset);
             });
 
-            // Limit detection to staves whose middle line (index 2) is within 4 staff-line intervals from the red center line
-            let validStaves = staves.filter(staff => {
-              let middleLineY = staff.lines[2];
-              return Math.abs(middleLineY - centerY) <= (4 * staff.spacing);
-            });
+            let validStaves = [];
+            if (lockCenterEnabled) {
+              if (minima.length > 0) {
+                let shiftedMinima = minima.map(m => m + yOffset);
+                let closestMinimaY = shiftedMinima.reduce((prev, curr) =>
+                  Math.abs(curr - centerY) < Math.abs(prev - centerY) ? curr : prev
+                );
+                let matchingStaff = staves.find(staff => Math.abs(staff.lines[2] - closestMinimaY) < 2);
+                if (matchingStaff) {
+                  validStaves = [matchingStaff];
+                }
+              }
+            } else {
+              validStaves = staves.filter(staff => {
+                let middleLineY = staff.lines[2];
+                return Math.abs(middleLineY - centerY) <= (4 * staff.spacing);
+              });
+            }
 
             if (validStaves.length > 0) {
               let rawClosestStaff = validStaves.reduce((prev, curr) =>
@@ -331,11 +365,11 @@ function startRealtimeAnalysis() {
               let topLineY = closestStaff.lines[0];
               let bottomLineY = closestStaff.lines[4];
 
-              // Note mapping dictionaries for ledger lines with octave numbers:
-              const bassEvenAbove = { 2: "E4", 4: "B4", 6: "F5", 8: "C6", 10: "G6" };
-              const bassEvenBelow = { 2: "C2", 4: "F1", 6: "B0", 8: "E0", 10: "A-1", 12: "D-1" };
-              const trebleOddAbove = { 1: "A5", 3: "E6", 5: "B6", 7: "F7", 9: "C8" };
-              const trebleOddBelow = { 1: "C4", 3: "F3", 5: "B2", 7: "E2", 9: "A1", 11: "D1", 13: "G0" };
+              const bassAboveMap = { 1: "C4", 2: "E4", 3: "G4", 4: "B4", 5: "D5", 6: "F5", 7: "A5", 8: "C6", 9: "E6", 10: "G6" };
+              const trebleAboveMap = { 1: "A5", 2: "C6", 3: "E6", 4: "G6", 5: "B6", 6: "D7", 7: "F7", 8: "A7", 9: "C8", 10: "E8" };
+
+              const bassBelowMap = { 1: "E2", 2: "C2", 3: "A1", 4: "F1", 5: "D1", 6: "B0", 7: "G0", 8: "E0", 9: "C0", 10: "A-1", 11: "G-1", 12: "F-1", 13: "E-1" };
+              const trebleBelowMap = { 1: "C4", 2: "A3", 3: "F3", 4: "D3", 5: "B2", 6: "G2", 7: "E2", 8: "C2", 9: "A1", 10: "F1", 11: "D1", 12: "B0", 13: "G0" };
 
               let staffWidth = cols * 0.25;
               let staffStartX = midX - staffWidth / 2;
@@ -359,10 +393,38 @@ function startRealtimeAnalysis() {
               let ledgerStartX = midX - ledgerWidth / 2;
               let ledgerEndX = midX + ledgerWidth / 2;
 
-              overlayCtx.strokeStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
+              overlayCtx.strokeStyle = "rgba(255, 102, 0, 0.9)";
               overlayCtx.lineWidth = 2;
-              overlayCtx.font = "13px Arial, sans-serif";
               overlayCtx.textBaseline = "middle";
+
+              // Font sizes: Bass (+10% -> 16px), Treble (+20% -> 18px)
+              let bassFont = "16px Arial, sans-serif";
+              let trebleFont = "18px Arial, sans-serif";
+
+              // Robust helper function with explicit parameters to prevent scoping/closure errors
+              const renderSplitLabel = (ctx, lineStr, bNote, tNote, xPos, yPos, isRightAlign) => {
+                ctx.fillStyle = "rgba(255, 102, 0, 0.9)";
+
+                if (isRightAlign) {
+                  ctx.font = trebleFont;
+                  ctx.textAlign = "right";
+                  ctx.fillText(`𝄞${tNote}`, xPos, yPos);
+
+                  let trebleWidth = ctx.measureText(`𝄞${tNote}`).width;
+
+                  ctx.font = bassFont;
+                  ctx.fillText(`𝄢${bNote} ${lineStr}`, xPos - trebleWidth - 8, yPos);
+                } else {
+                  ctx.font = bassFont;
+                  ctx.textAlign = "left";
+                  ctx.fillText(`${lineStr}𝄢${bNote}`, xPos, yPos);
+
+                  let bassWidth = ctx.measureText(`${lineStr}𝄢${bNote}`).width;
+
+                  ctx.font = trebleFont;
+                  ctx.fillText(` 𝄞${tNote}`, xPos + bassWidth, yPos);
+                }
+              };
 
               // Render Ledger Lines Above Staff (+1 to +10)
               let maxAboveLines = 10;
@@ -376,18 +438,14 @@ function startRealtimeAnalysis() {
                 overlayCtx.lineTo(ledgerEndX, lEnd);
                 overlayCtx.stroke();
 
+                let bNote = bassAboveMap[lineVal] || "";
+                let tNote = trebleAboveMap[lineVal] || "";
+                let lineStr = `+${lineVal}`;
+
                 if (lineVal % 2 === 0) {
-                  let noteName = bassEvenAbove[lineVal] || "";
-                  let labelText = `+${lineVal} ${noteName}`;
-                  overlayCtx.textAlign = "right";
-                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                  overlayCtx.fillText(labelText, ledgerStartX - 6, lEnd);
+                  renderSplitLabel(overlayCtx, lineStr, bNote, tNote, ledgerStartX - 6, lEnd, true);
                 } else {
-                  let noteName = trebleOddAbove[lineVal] || "";
-                  let labelText = `+${lineVal} ${noteName}`;
-                  overlayCtx.textAlign = "left";
-                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                  overlayCtx.fillText(labelText, ledgerEndX + 6, lEnd);
+                  renderSplitLabel(overlayCtx, lineStr, bNote, tNote, ledgerEndX + 6, lEnd, false);
                 }
               }
 
@@ -403,37 +461,16 @@ function startRealtimeAnalysis() {
                 overlayCtx.lineTo(ledgerEndX, lEnd);
                 overlayCtx.stroke();
 
+                let bNote = bassBelowMap[lineVal] || "";
+                let tNote = trebleBelowMap[lineVal] || "";
+                let lineStr = `-${lineVal}`;
+
                 if (lineVal % 2 === 0) {
-                  let noteName = bassEvenBelow[lineVal] || "";
-                  let labelText = `-${lineVal} ${noteName}`;
-                  overlayCtx.textAlign = "right";
-                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                  overlayCtx.fillText(labelText, ledgerStartX - 6, lEnd);
+                  renderSplitLabel(overlayCtx, lineStr, bNote, tNote, ledgerStartX - 6, lEnd, true);
                 } else {
-                  let noteName = trebleOddBelow[lineVal] || "";
-                  let labelText = `-${lineVal} ${noteName}`;
-                  overlayCtx.textAlign = "left";
-                  overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)";
-                  overlayCtx.fillText(labelText, ledgerEndX + 6, lEnd);
+                  renderSplitLabel(overlayCtx, lineStr, bNote, tNote, ledgerEndX + 6, lEnd, false);
                 }
               }
-
-              // Render Slimmer, Cleaner Clef Symbols at +2 ledger line height
-              let line2AboveY = topLineY - (2 * closestStaff.spacing);
-              let bassClefY = line2AboveY + (staffStartX - midX) * tanVal;
-              let trebleClefY = line2AboveY + (staffEndX - midX) * tanVal;
-
-              overlayCtx.font = "56px 'Apple Symbols', 'Cambria Math', 'Times New Roman', sans-serif";
-              overlayCtx.textBaseline = "middle";
-              overlayCtx.fillStyle = "rgba(255, 102, 0, 0.9)"; // Neon Orange
-
-              // Bass Clef Symbol (𝄢) to the left of staffStartX at +2 ledger height
-              overlayCtx.textAlign = "right";
-              overlayCtx.fillText("𝄢", staffStartX - 15, bassClefY);
-
-              // Treble Clef Symbol (𝄞) to the right of staffEndX at +2 ledger height
-              overlayCtx.textAlign = "left";
-              overlayCtx.fillText("𝄞", staffEndX + 15, trebleClefY);
             }
           }
         }
