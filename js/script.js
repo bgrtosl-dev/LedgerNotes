@@ -2,147 +2,228 @@
  * Ledger Notes App - Main Application Logic
  */
 
-// Global shared state and helpers
-window.VF = Vex.Flow;
-window.clef = "treble";
-window.selectedLetter = "C";
-window.natural = [ "C", "D", "E", "F", "G", "A", "B" ];
-
-/* PIANO: A0 - C8 */
-const piano = [];
-for (let octave = 0; octave <= 8; octave++) {
-  for (const letter of window.natural) {
-    if ( octave === 0 && letter !== "A" && letter !== "B" ) { continue; }
-    if ( octave === 8 && letter !== "C" ) { continue; }
-    piano.push({ letter, octave });
-  }
-}
-
-/* DIATONIC POSITION */
-const letterIndex = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-window.pitchPosition = function(letter, octave) {
-  return octave * 7 + letterIndex[letter];
-};
-
-/* LEDGER POSITION */
-function ledgerLineCount(letter, octave) {
-  const p = window.pitchPosition(letter, octave);
-  let bottom;
-  let top;
-  if (window.clef === "treble") {
-    bottom = window.pitchPosition("E", 4);
-    top = window.pitchPosition("F", 5);
-  } else {
-    bottom = window.pitchPosition("G", 2);
-    top = window.pitchPosition("A", 3);
-  }
-  if (p >= bottom && p <= top) { return 0; }
-  if (p > top) { return (p - top) / 2; }
-  return -(bottom - p) / 2;
-}
-
-/* DRAW */
-window.draw = function() {
-  const score = document.getElementById("score");
-  score.innerHTML = "";
-  const renderer = new window.VF.Renderer( score, window.VF.Renderer.Backends.SVG );
-  renderer.resize( 600, 380 );
-  const context = renderer.getContext();
-
-  const stave = new window.VF.Stave( 50, 125, 125 );
-  stave.addClef(window.clef);
-  stave.setContext(context);
-  stave.draw();
-
-  const notes = piano.filter( n => n.letter === window.selectedLetter );
-  const keys = notes.map(function (n) {
-    return ( n.letter.toLowerCase() + "/" + n.octave );
-  });
-
-  const chord = new window.VF.StaveNote({ clef: window.clef, keys: keys, duration: "w" });
-  const voice = new window.VF.Voice({ numbeats: 4, beatvalue: 4 });
-  voice.addTickables([ chord ]);
-  new window.VF.Formatter().joinVoices([voice]).format( [voice], 80 );
-  voice.draw( context, stave );
-
-  drawLabels( chord, notes );
-};
-
-/* LABELS */
-function drawLabels(chord, notes) {
-  const svg = document.querySelector( "#score svg" );
-  if (!svg) { return; }
-  const ys = chord.getYs();
-  let noteX = 0;
-  if ( typeof chord.getAbsoluteX === "function" ) {
-    noteX = chord.getAbsoluteX();
-  }
-  const labelX = noteX + 25;
-  notes.forEach(function (note, index) {
-    const y = ys[index];
-    const count = ledgerLineCount( note.letter, note.octave );
-    let countText = "";
-    if (count !== 0) {
-      const formattedCount = Number.isInteger(count) ? String(count) : count.toFixed(1);
-      const sign = count > 0 ? "+" : "";
-      countText = "/" + sign + formattedCount;
-    }
-    const label = note.letter + note.octave + countText;
-
-    const text = document.createElementNS( "http://www.w3.org/2000/svg", "text" );
-    text.setAttribute( "x", labelX );
-    text.setAttribute( "y", y + 4 );
-    text.setAttribute( "font-family", "Arial, sans-serif" );
-    text.setAttribute( "font-size", "11" );
-    text.setAttribute( "fill", "#333" );
-    text.textContent = label;
-    svg.appendChild(text);
-  });
-}
-
-/* NOTE SHIFT HELPER */
-function shiftNote(steps) {
-  const currentIndex = window.natural.indexOf(window.selectedLetter);
-  let newIndex = (currentIndex + steps) % window.natural.length;
-  if (newIndex < 0) {
-    newIndex += window.natural.length;
-  }
-  window.selectedLetter = window.natural[newIndex];
-  document.getElementById("noteSelect").value = window.selectedLetter;
-  window.draw();
-}
-
 window.addEventListener("load", function () {
-  /* CONTROLS */
-  const clefBtn = document.getElementById("clefToggleBtn");
-  clefBtn.addEventListener("click", function () {
-    const currentIndex = window.natural.indexOf(window.selectedLetter);
-    let newIndex;
+  const VF = Vex.Flow;
+  let clef = "treble";
+  let selectedLetter = "C";
+  window.clef = clef;
 
-    if (window.clef === "treble") {
-      window.clef = "bass";
-      this.textContent = "𝄢 Bass";
-      newIndex = (currentIndex + 2) % window.natural.length;
-    } else {
-      window.clef = "treble";
-      this.textContent = "𝄞 Treble";
-      newIndex = (currentIndex - 2 + window.natural.length) % window.natural.length;
+  /* PIANO: A0 - C8 */
+  const piano = [];
+  const natural = [ "C", "D", "E", "F", "G", "A", "B" ];
+  window.natural = natural;
+
+  for (let octave = 0; octave <= 8; octave++) {
+    for (const letter of natural) {
+      if ( octave === 0 && letter !== "A" && letter !== "B" ) { continue; }
+      if ( octave === 8 && letter !== "C" ) { continue; }
+      piano.push({ letter, octave });
     }
+  }
 
-    window.selectedLetter = window.natural[newIndex];
-    document.getElementById("noteSelect").value = window.selectedLetter;
-    window.draw();
-  });
+  /* DIATONIC POSITION */
+  const letterIndex = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
+  function pitchPosition(letter, octave) {
+    return octave * 7 + letterIndex[letter];
+  }
+  window.pitchPosition = pitchPosition;
 
-  document.getElementById("noteSelect").addEventListener("change", function () {
-    window.selectedLetter = this.value;
-    window.draw();
-  });
+  /* LEDGER POSITION */
+  function ledgerLineCount(letter, octave) {
+    const p = pitchPosition(letter, octave);
+    let bottom;
+    let top;
+    if (clef === "treble") {
+      bottom = pitchPosition("E", 4);
+      top = pitchPosition("F", 5);
+    } else {
+      bottom = pitchPosition("G", 2);
+      top = pitchPosition("A", 3);
+    }
+    if (p >= bottom && p <= top) { return 0; }
+    if (p > top) { return (p - top) / 2; }
+    return -(bottom - p) / 2;
+  }
+
+  /* POPULATE NUMBER SELECTOR WITH "ledger" DEFAULT OPTION */
+  function initRangeSelector() {
+    const rangeSelect = document.getElementById("rangeSelect");
+    if (!rangeSelect) return;
+    rangeSelect.innerHTML = '<option value="" selected>ledger</option>';
+    for (let i = 10; i >= -13; i--) {
+      let opt = document.createElement("option");
+      opt.value = i;
+      opt.text = (i > 0 ? "+" + i : i);
+      rangeSelect.appendChild(opt);
+    }
+  }
+
+  /* DRAW (75% length: 187px stave width, left-aligned) */
+  function draw() {
+    const score = document.getElementById("score");
+    if (!score) { return; }
+    score.innerHTML = "";
+    const renderer = new VF.Renderer( score, VF.Renderer.Backends.SVG );
+    renderer.resize( 300, 250 );
+    const context = renderer.getContext();
+
+    const stave = new VF.Stave( 10, 75, 187 );
+    stave.addClef(clef);
+    stave.setContext(context);
+    stave.draw();
+
+    // Render all notes of the selected letter across the entire piano
+    const notes = piano.filter( n => n.letter === selectedLetter );
+    const keys = notes.map(function (n) {
+      return ( n.letter.toLowerCase() + "/" + n.octave );
+    });
+
+    if (keys.length === 0) return;
+
+    const chord = new VF.StaveNote({ clef: clef, keys: keys, duration: "w" });
+    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+    voice.addTickables([ chord ]);
+    new VF.Formatter().joinVoices([voice]).format( [voice], 80 );
+    voice.draw( context, stave );
+
+    drawLabels( chord, notes );
+  }
+  window.draw = draw;
+
+  /* LABELS WITH HALVED OFFSET (+22) */
+  function drawLabels(chord, notes) {
+    const scoreEl = document.getElementById("score");
+    const svg = scoreEl ? scoreEl.querySelector( "svg" ) : null;
+    if (!svg) { return; }
+    const ys = chord.getYs();
+    let noteX = 0;
+    if ( typeof chord.getAbsoluteX === "function" ) {
+      noteX = chord.getAbsoluteX();
+    }
+    const labelX = noteX + 22;
+
+    notes.forEach(function (note, index) {
+      const y = ys[index];
+      const count = ledgerLineCount( note.letter, note.octave );
+      let countText = "";
+      if (count !== 0) {
+        const formattedCount = Number.isInteger(count) ? String(count) : count.toFixed(1);
+        const sign = count > 0 ? "+" : "";
+        countText = "/" + sign + formattedCount;
+      }
+      const label = note.letter + note.octave + countText;
+
+      const text = document.createElementNS( "http://www.w3.org/2000/svg", "text" );
+      text.setAttribute( "x", labelX );
+      text.setAttribute( "y", y + 4 );
+      text.setAttribute( "font-family", "Arial, sans-serif" );
+      text.setAttribute( "font-size", "11" );
+      text.setAttribute( "fill", "#333" );
+      text.textContent = label;
+      svg.appendChild(text);
+    });
+  }
+
+  /* NOTE SHIFT HELPER */
+  function shiftNote(steps) {
+    const currentIndex = natural.indexOf(selectedLetter);
+    let newIndex = (currentIndex + steps) % natural.length;
+    if (newIndex < 0) {
+      newIndex += natural.length;
+    }
+    selectedLetter = natural[newIndex];
+    document.getElementById("noteSelect").value = selectedLetter;
+
+    // Reset the number selector to "ledger" when using step buttons
+    const rangeSelect = document.getElementById("rangeSelect");
+    if (rangeSelect) rangeSelect.value = "";
+
+    draw();
+  }
+
+  /* CONTROL LISTENERS */
+  const clefSelect = document.getElementById("clefSelect");
+  if (clefSelect) {
+    clefSelect.addEventListener("change", function () {
+      clef = this.value;
+      window.clef = clef;
+
+      // Reset the number selector when clef changes
+      const rangeSelect = document.getElementById("rangeSelect");
+      if (rangeSelect) rangeSelect.value = "";
+
+      draw();
+    });
+  }
+
+  const rangeSelect = document.getElementById("rangeSelect");
+  if (rangeSelect) {
+    rangeSelect.addEventListener("change", function () {
+      if (this.value === "") return;
+      const n = parseInt(this.value);
+      let targetPitch;
+
+      // Map ledger line number to pitch according to exact specifications
+      if (clef === "treble") {
+        if (n > 0) {
+          targetPitch = 40 + (n - 1) * 2; // +1 is A5
+        } else {
+          targetPitch = 28 + (n + 1) * 2; // -1 is C4
+        }
+      } else { // bass
+        if (n > 0) {
+          targetPitch = 28 + (n - 1) * 2; // +1 is C4
+        } else {
+          targetPitch = 16 + (n + 1) * 2; // -1 is E2
+        }
+      }
+
+      let letterIndexVal = ((targetPitch % 7) + 7) % 7;
+      selectedLetter = natural[letterIndexVal];
+
+      const noteSelect = document.getElementById("noteSelect");
+      if (noteSelect) noteSelect.value = selectedLetter;
+      draw();
+    });
+  }
+
+  const noteSelect = document.getElementById("noteSelect");
+  if (noteSelect) {
+    noteSelect.addEventListener("change", function () {
+      selectedLetter = this.value;
+
+      // Reset the number selector when note selector is used
+      const rangeSelect = document.getElementById("rangeSelect");
+      if (rangeSelect) rangeSelect.value = "";
+
+      draw();
+    });
+  }
 
   document.getElementById("btnUp2").addEventListener("click", () => shiftNote(2));
   document.getElementById("btnUp1").addEventListener("click", () => shiftNote(1));
   document.getElementById("btnDown1").addEventListener("click", () => shiftNote(-1));
   document.getElementById("btnDown2").addEventListener("click", () => shiftNote(-2));
+
+  /* Help Modal Events */
+  const helpBtn = document.getElementById("helpBtn");
+  const helpModal = document.getElementById("help-modal");
+  const closeHelpBtn = document.getElementById("closeHelpBtn");
+  if (helpBtn && helpModal) {
+    helpBtn.addEventListener("click", () => {
+      helpModal.style.display = "flex";
+    });
+    if (closeHelpBtn) {
+      closeHelpBtn.addEventListener("click", () => {
+        helpModal.style.display = "none";
+      });
+    }
+    helpModal.addEventListener("click", (e) => {
+      if (e.target === helpModal) {
+        helpModal.style.display = "none";
+      }
+    });
+  }
 
   /* QR Modal events */
   const qrBtn = document.getElementById("qr-btn");
@@ -158,8 +239,14 @@ window.addEventListener("load", function () {
       });
   }
 
-  /* INITIAL DRAW */
-  window.draw();
+  /* INITIALIZATION */
+  initRangeSelector();
+  const rangeSelectEl = document.getElementById("rangeSelect");
+  if (rangeSelectEl) rangeSelectEl.value = "";
+
+  const noteSelectEl = document.getElementById("noteSelect");
+  if (noteSelectEl) noteSelectEl.value = selectedLetter;
+  draw();
 });
 
 /* SERVICE WORKER */
